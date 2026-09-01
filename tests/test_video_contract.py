@@ -40,6 +40,7 @@ def test_video_env_vars_are_documented_and_templated():
     providers = (ROOT / "docs" / "providers.md").read_text(encoding="utf-8")
 
     for name in (
+        "ARK_API_KEY",
         "FAL_KEY",
         "GOOGLE_API_KEY",
         "HEDRA_API_KEY",

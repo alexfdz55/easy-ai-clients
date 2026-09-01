@@ -193,6 +193,7 @@ requires `output_path`.
 
 | API | Env var | Doc |
 | --- | --- | --- |
+| `byteplus` | `ARK_API_KEY` | [`byteplus`](video/text_to_video/byteplus.md) |
 | `falai` | `FAL_KEY` | [`falai`](video/text_to_video/falai.md) |
 | `google` | `GOOGLE_API_KEY` | [`google`](video/text_to_video/google.md) |
 | `hedra` | `HEDRA_API_KEY` | [`hedra`](video/text_to_video/hedra.md) |
@@ -206,6 +207,7 @@ requires `output_path`.
 
 | API | Env var | Doc |
 | --- | --- | --- |
+| `byteplus` | `ARK_API_KEY` | [`byteplus`](video/image_to_video/byteplus.md) |
 | `falai` | `FAL_KEY` | [`falai`](video/image_to_video/falai.md) |
 | `google` | `GOOGLE_API_KEY` | [`google`](video/image_to_video/google.md) |
 | `hedra` | `HEDRA_API_KEY` | [`hedra`](video/image_to_video/hedra.md) |
@@ -218,6 +220,7 @@ requires `output_path`.
 
 | API | Env var | Doc |
 | --- | --- | --- |
+| `byteplus` | `ARK_API_KEY` | [`byteplus`](video/video_to_video/byteplus.md) |
 | `falai` | `FAL_KEY` | [`falai`](video/video_to_video/falai.md) |
 | `google` | `GOOGLE_API_KEY` | [`google`](video/video_to_video/google.md) |
 | `hedra` | `HEDRA_API_KEY` | [`hedra`](video/video_to_video/hedra.md) |

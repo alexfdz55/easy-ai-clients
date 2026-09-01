@@ -81,9 +81,9 @@ __all__ = [
 ]
 
 
-_TEXT_TO_VIDEO_APIS = ("falai", "google", "hedra", "heygen", "huggingface", "runway", "together", "xai")
-_IMAGE_TO_VIDEO_APIS = ("falai", "google", "hedra", "heygen", "runway", "together", "xai")
-_VIDEO_TO_VIDEO_APIS = ("falai", "google", "hedra", "runway", "together", "xai")
+_TEXT_TO_VIDEO_APIS = ("byteplus", "falai", "google", "hedra", "heygen", "huggingface", "runway", "together", "xai")
+_IMAGE_TO_VIDEO_APIS = ("byteplus", "falai", "google", "hedra", "heygen", "runway", "together", "xai")
+_VIDEO_TO_VIDEO_APIS = ("byteplus", "falai", "google", "hedra", "runway", "together", "xai")
 _MOTION_CONTROL_APIS = ("falai", "hedra", "runway")
 _AVATAR_VIDEO_APIS = ("falai", "hedra", "heygen", "replicate", "runway")
 _VIDEO_WITH_AUDIO_APIS = ("hedra", "runway", "together")

@@ -154,13 +154,16 @@ def test_video_dispatchers_callable():
         )),
         ("music", "_apis", ("deapi", "elevenlabs", "google", "runware")),
         ("video", "_text_to_video._apis", (
-            "falai", "google", "hedra", "heygen", "huggingface", "runway",
-            "together", "xai",
+            "byteplus", "falai", "google", "hedra", "heygen", "huggingface",
+            "runway", "together", "xai",
         )),
         ("video", "_image_to_video._apis", (
-            "falai", "google", "hedra", "heygen", "runway", "together", "xai",
+            "byteplus", "falai", "google", "hedra", "heygen", "runway",
+            "together", "xai",
         )),
-        ("video", "_video_to_video._apis", ("falai", "google", "hedra", "runway", "together", "xai")),
+        ("video", "_video_to_video._apis", (
+            "byteplus", "falai", "google", "hedra", "runway", "together", "xai",
+        )),
         ("video", "_motion_control._apis", ("falai", "hedra", "runway")),
         ("video", "_avatar_video._apis", ("falai", "hedra", "heygen", "replicate", "runway")),
         ("video", "_video_with_audio._apis", ("hedra", "runway", "together")),

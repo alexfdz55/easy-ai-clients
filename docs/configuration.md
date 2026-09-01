@@ -47,6 +47,8 @@ the repository template:
 | Variable | Used by |
 | --- | --- |
 | `ANTHROPIC_API_KEY` | `text.generate(api="anthropic")`, `image.analyze(api="anthropic")` |
+| `ARK_API_KEY` | BytePlus ModelArk Seedance video operations using `api="byteplus"` |
+| `ARK_BASE_URL` | Optional ModelArk base URL override for BytePlus video operations |
 | `BFL_API_KEY` | `image.generate / edit / remix(api="bfl")` |
 | `COHERE_API_KEY` | `text.generate(api="cohere")` |
 | `DEAPI_API_KEY` | `music.generate(api="deapi")` |
