@@ -77,6 +77,8 @@ def test_environment_template_matches_documented_runtime_variables():
     configuration = (DOCS / "configuration.md").read_text(encoding="utf-8")
     expected = {
         "ANTHROPIC_API_KEY",
+        "ARK_API_KEY",
+        "ARK_BASE_URL",
         "BFL_API_KEY",
         "COHERE_API_KEY",
         "DEAPI_API_KEY",

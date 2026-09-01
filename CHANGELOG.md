@@ -3,6 +3,16 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.14.0 - 2026-09-01
+
+### Added
+
+- Added BytePlus ModelArk Seedance 2.x video adapters behind `api="byteplus"`
+  for `video.text_to_video`, `video.image_to_video` (first frame and
+  first-plus-last frame), multimodal image/video/audio refs, and
+  `video.video_to_video` edit/extend. Auth uses `ARK_API_KEY` against
+  `POST/GET /contents/generations/tasks`.
+
 ## 0.13.1 - 2026-06-28
 
 ### Added
