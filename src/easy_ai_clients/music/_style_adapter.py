@@ -230,7 +230,7 @@ def build_generation_request(
         voice_prompt_size = "small"
 
     voice_guidance = None
-    if not user_prompt_provided:
+    if provider != "kie" and not user_prompt_provided:
         voice_guidance = _voice_guidance(
             style_preset,
             gender,
@@ -257,6 +257,11 @@ def build_generation_request(
             )
         generated_kwargs = _provider_kwargs(provider, model, style_preset, language)
         style_source = "preset"
+
+    if provider == "kie":
+        selected_gender = _validate_gender(gender)
+        if selected_gender in {"male", "female"}:
+            generated_kwargs["gender"] = selected_gender
 
     if prompt is not None:
         generated_kwargs["prompt"] = prompt
@@ -444,6 +449,8 @@ def _provider_prompt(
     voice_guidance,
     style_prompt_size,
 ):
+    if provider == "kie":
+        return _render_kie_style_tags(style_preset, language)
     if provider == "deapi" and model in _DEAPI_ACE_STEP_MODELS:
         return _render_prompt(
             style_preset,
@@ -548,6 +555,41 @@ def _render_compact_prompt(
     return _clip(_sentence(shortest_critical), max_chars)
 
 
+def _render_kie_style_tags(style_preset, language):
+    parts = []
+    genre = str(style_preset.get("id") or "").replace("_", " ").strip()
+    if genre:
+        parts.append(genre)
+    moods = style_preset.get("mood") or []
+    if isinstance(moods, list):
+        parts.extend(str(mood).strip() for mood in moods if str(mood).strip())
+    energy = str(style_preset.get("energy") or "").strip()
+    if energy:
+        parts.append(f"{energy} energy")
+    bpm = style_preset.get("tempo_bpm")
+    if bpm is not None:
+        parts.append(f"{bpm} BPM")
+    instruments = style_preset.get("instrumentation") or []
+    if isinstance(instruments, list):
+        parts.extend(
+            str(item).strip() for item in instruments[:6] if str(item).strip()
+        )
+    language_label = _language_label(language)
+    if language_label:
+        parts.append(f"{language_label} vocals")
+    description = ""
+    raw_description = style_preset.get("description")
+    if isinstance(raw_description, dict):
+        description = str(raw_description.get("en") or "").strip()
+    elif isinstance(raw_description, str):
+        description = raw_description.strip()
+    if description:
+        first = description.split(".")[0].strip()
+        if first:
+            parts.append(_clip(first, 80))
+    return _clip(", ".join(part for part in parts if part), 1000)
+
+
 def _provider_kwargs(provider, model, style_preset, language):
     if provider == "deapi" and model in _DEAPI_ACE_STEP_MODELS:
         return {
@@ -559,6 +601,9 @@ def _provider_kwargs(provider, model, style_preset, language):
         }
 
     if provider == "elevenlabs" and model == "music_v2":
+        return {}
+
+    if provider == "kie" and model == "V5_5":
         return {}
 
     if provider == "google" and model in _GOOGLE_LYRIA_MODELS:

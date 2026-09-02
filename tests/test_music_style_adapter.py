@@ -243,6 +243,56 @@ def test_voice_description_overrides_preset_gender_voice():
     assert "Two female lead voices" not in request["kwargs"]["prompt"]
 
 
+def test_kie_preset_renders_compact_tags_not_elevenlabs_prose():
+    request = style_adapter.build_generation_request(
+        provider="kie",
+        model="V5_5",
+        lyrics=TEST_LYRICS,
+        style="pop",
+        kwargs={"gender": "female", "language": "en-US"},
+    )
+
+    tags = request["kwargs"]["prompt"]
+    assert request["kwargs"]["gender"] == "female"
+    assert "pop" in tags
+    assert "112 BPM" in tags
+    assert "English vocals" in tags
+    assert "high energy" in tags
+    assert "automatic music generation" not in tags
+    assert "mono compatibility" not in tags
+    assert "Voice guidance:" not in tags
+    assert "Natural female pop lead" not in tags
+
+
+def test_kie_both_gender_does_not_inject_gender_kwarg():
+    request = style_adapter.build_generation_request(
+        provider="kie",
+        model="V5_5",
+        lyrics=TEST_LYRICS,
+        style="pop",
+        kwargs={"gender": "both"},
+    )
+
+    assert "gender" not in request["kwargs"]
+    assert "Voice guidance:" not in request["kwargs"]["prompt"]
+
+
+def test_kie_voice_description_does_not_enter_style_tags():
+    request = style_adapter.build_generation_request(
+        provider="kie",
+        model="V5_5",
+        lyrics=TEST_LYRICS,
+        style="pop",
+        kwargs={
+            "gender": "female",
+            "voice_description": "A seven-year-old girl with a bright spoken tone.",
+        },
+    )
+
+    assert "seven-year-old" not in request["kwargs"]["prompt"]
+    assert request["kwargs"]["gender"] == "female"
+
+
 def test_elevenlabs_uses_small_voice_prompt_for_presets():
     request = style_adapter.build_generation_request(
         provider="elevenlabs",

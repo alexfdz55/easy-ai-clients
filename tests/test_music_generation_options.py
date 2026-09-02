@@ -27,6 +27,9 @@ def test_full_catalog_contains_all_models_and_shared_keys():
     assert "music_v2" in catalog
     assert "lyria_3_clip_preview" in catalog
     assert "ace_step_v1_5_xl_sft" in catalog
+    assert "suno_v5_5" in catalog
+    assert "V5_5" in catalog
+    assert "duration" in catalog["suno_v5_5"]["kie"]
     assert "duration" in catalog["ace_step_v1_5_turbo"]["deapi"]
     assert "language" in catalog["ace_step_v1_5_turbo"]["deapi"]
 
@@ -96,11 +99,13 @@ def test_summary_mode():
             "music_v2",
             "lyria_3_clip_preview",
             "lyria_3_pro_preview",
+            "suno_v5_5",
+            "V5_5",
             "ace_step_v1_5_xl_base",
             "ace_step_v1_5_xl_sft",
             "ace_step_v1_5_xl_turbo",
         ],
-        "apis": ["deapi", "elevenlabs", "google", "runware"],
+        "apis": ["deapi", "elevenlabs", "google", "kie", "runware"],
         "model_apis": {
             "ace_step_v1_5_turbo": ["deapi", "runware"],
             "ace_step_1_5_xl_turbo_int8": ["deapi"],
@@ -109,6 +114,8 @@ def test_summary_mode():
             "music_v2": ["elevenlabs"],
             "lyria_3_clip_preview": ["google"],
             "lyria_3_pro_preview": ["google"],
+            "suno_v5_5": ["kie"],
+            "V5_5": ["kie"],
             "ace_step_v1_5_xl_base": ["runware"],
             "ace_step_v1_5_xl_sft": ["runware"],
             "ace_step_v1_5_xl_turbo": ["runware"],
@@ -117,6 +124,7 @@ def test_summary_mode():
             "deapi": "ace_step_v1_5_turbo",
             "elevenlabs": "eleven_music",
             "google": "lyria_3_clip_preview",
+            "kie": "suno_v5_5",
             "runware": "ace_step_v1_5_xl_turbo",
         },
     }

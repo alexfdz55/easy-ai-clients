@@ -4,6 +4,7 @@ PROVIDERS = (
     "deapi",
     "elevenlabs",
     "google",
+    "kie",
     "runware",
 )
 
@@ -21,6 +22,10 @@ MODEL_ALIASES = {
         "lyria_3_clip_preview": "lyria-3-clip-preview",
         "lyria_3_pro_preview": "lyria-3-pro-preview",
     },
+    "kie": {
+        "suno_v5_5": "V5_5",
+        "V5_5": "V5_5",
+    },
     "runware": {
         "ace_step_v1_5_turbo": "runware:ace-step@v1.5-turbo",
         "ace_step_v1_5_xl_base": "runware:ace-step@v1.5-xl-base",
@@ -33,6 +38,7 @@ DEFAULT_MODELS = {
     "deapi": "AceStep_1_5_Turbo",
     "elevenlabs": "music_v2",
     "google": "lyria-3-clip-preview",
+    "kie": "V5_5",
     "runware": "runware:ace-step@v1.5-xl-turbo",
 }
 
@@ -40,6 +46,7 @@ DEFAULT_MODEL_KEYS = {
     "deapi": "ace_step_v1_5_turbo",
     "elevenlabs": "eleven_music",
     "google": "lyria_3_clip_preview",
+    "kie": "suno_v5_5",
     "runware": "ace_step_v1_5_xl_turbo",
 }
 

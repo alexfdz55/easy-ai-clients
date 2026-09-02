@@ -78,7 +78,7 @@ def test_music_dispatchers_callable():
     assert callable(music.get_generation_options)
     assert callable(music.get_style_presets)
     assert callable(music.build_lyrics_prompt)
-    assert music.available_apis() == ("deapi", "elevenlabs", "google", "runware")
+    assert music.available_apis() == ("deapi", "elevenlabs", "google", "kie", "runware")
 
 
 def test_video_dispatchers_callable():
@@ -152,7 +152,7 @@ def test_video_dispatchers_callable():
             "anthropic", "deepinfra", "falai", "fireworks", "google", "groq",
             "huggingface", "mistral", "openai", "openrouter", "together", "xai",
         )),
-        ("music", "_apis", ("deapi", "elevenlabs", "google", "runware")),
+        ("music", "_apis", ("deapi", "elevenlabs", "google", "kie", "runware")),
         ("video", "_text_to_video._apis", (
             "byteplus", "falai", "google", "hedra", "heygen", "huggingface",
             "runway", "together", "xai",

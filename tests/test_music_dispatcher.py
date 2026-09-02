@@ -118,7 +118,7 @@ def test_public_exports_are_exact():
 def test_available_apis_returns_validated_provider_tuple():
     from easy_ai_clients import music
 
-    assert music.available_apis() == ("deapi", "elevenlabs", "google", "runware")
+    assert music.available_apis() == ("deapi", "elevenlabs", "google", "kie", "runware")
 
 
 def test_generate_rejects_unknown_style():
@@ -207,6 +207,7 @@ def test_generate_uses_validated_default_model(monkeypatch):
         ("deapi", "AceStep_1_5_Turbo", "ace_step_v1_5_turbo"),
         ("elevenlabs", "music_v2", "eleven_music"),
         ("google", "lyria-3-clip-preview", "lyria_3_clip_preview"),
+        ("kie", "V5_5", "suno_v5_5"),
         ("runware", "runware:ace-step@v1.5-xl-turbo", "ace_step_v1_5_xl_turbo"),
     ],
 )

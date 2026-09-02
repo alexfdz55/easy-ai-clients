@@ -65,7 +65,7 @@ pip install -e ".[dev]"
 ```
 
 The package version is defined in both `pyproject.toml` and
-`src/easy_ai_clients/__init__.py`. Both currently show `0.14.0`.
+`src/easy_ai_clients/__init__.py`. Both currently show `0.15.0`.
 
 ## Repository Structure Summary
 
@@ -181,11 +181,13 @@ Current music duration behavior:
 | `deapi` | `10..300` seconds, default `60` when missing or invalid, sent as `duration`. |
 | `elevenlabs` | `3..600` seconds when valid, sent as `music_length_ms`; missing or invalid values omit duration. Native model is `music_v2`. |
 | `google` | Clip ignores duration and stays about `30` seconds; Pro uses valid `15..180` seconds as prompt text. |
+| `kie` | `10..360` seconds, default `60` when missing or invalid, sent as `duration` on native `V5_5`. Custom-mode `style` is compact tags, lyrics go in Kie `prompt`. |
 | `runware` | `30..300` seconds, default `60` when missing or invalid, sent as `duration`. |
 
 Current music input limits are `3000` characters for deAPI prompt/lyrics,
 `4100` characters for the final ElevenLabs prompt with lyrics, `131072` Google
-tokens via `countTokens`, and `3000` characters for Runware prompt/lyrics.
+tokens via `countTokens`, `1000` / `5000` characters for Kie style / lyrics,
+and `3000` characters for Runware prompt/lyrics.
 
 Local music helpers `get_generation_options`, `get_style_presets`, and
 `build_lyrics_prompt` do not call generation provider APIs. When `style` is a

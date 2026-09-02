@@ -180,7 +180,7 @@ value is sent as provided, without local aliases.
 `easy_ai_clients.music` is intentionally narrow. It supports exactly:
 
 ```python
-("deapi", "elevenlabs", "google", "runware")
+("deapi", "elevenlabs", "google", "kie", "runware")
 ```
 
 `music.generate(...)` validates provider/model support before dispatch. Public
@@ -194,6 +194,7 @@ Music duration is normalized per provider/model:
 | `deapi` | Clamps numeric `duration` to `10..300` seconds. Missing or invalid values use `60`. |
 | `elevenlabs` | Uses native `music_v2` through public keys `eleven_music`, `eleven_music_v2`, and `music_v2`. Clamps valid numeric `duration` to `3..600` seconds and sends `music_length_ms`. Missing or invalid values omit duration. |
 | `google` | Clip ignores duration and remains about `30` seconds. Pro clamps valid values to `15..180` seconds and adds target duration guidance to the prompt. |
+| `kie` | Uses native `V5_5` through public keys `suno_v5_5` and `V5_5`. Clamps numeric `duration` to `10..360` seconds. Missing or invalid values use `60`. Lyrics are Kie `prompt`; style tags are Kie `style`. |
 | `runware` | Clamps numeric `duration` to `30..300` seconds. Missing or invalid values use `60`. |
 
 Style presets contain `style_prompts` in `small`, `medium`, and `large`

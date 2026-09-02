@@ -3,6 +3,15 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 - 2026-09-02
+
+### Added
+
+- Added Kie.ai Suno music generation behind `api="kie"` for native model
+  `V5_5` (`suno_v5_5`). Custom mode sends lyrics as `prompt` and compact
+  preset tags as `style`, polls `/generate/record-info` until `SUCCESS`, and
+  downloads the first of two takes. Auth uses `KIE_API_KEY`.
+
 ## 0.14.0 - 2026-09-01
 
 ### Added

@@ -48,16 +48,22 @@ def load_env(env_path=None):
         if not match:
             continue
         name, value = match.groups()
-        value = value.strip()
+        value = _unquote_env_value(value)
         if not value or value.startswith("#"):
             continue
-        if (value.startswith('"') and value.endswith('"')) or (
-            value.startswith("'") and value.endswith("'")
-        ):
-            value = value[1:-1]
         os.environ.setdefault(name, value)
         loaded.add(name)
     return loaded
+
+
+def _unquote_env_value(value):
+    text = str(value).strip()
+    if len(text) >= 2 and (
+        (text.startswith('"') and text.endswith('"'))
+        or (text.startswith("'") and text.endswith("'"))
+    ):
+        return text[1:-1]
+    return text
 
 
 def require_env(name):
@@ -74,6 +80,8 @@ def require_env(name):
     """
     load_env()
     value = os.environ.get(name)
+    if value:
+        value = _unquote_env_value(value)
     if not value:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value

@@ -96,6 +96,7 @@ def test_environment_template_matches_documented_runtime_variables():
         "HEYGEN_API_KEY",
         "HEYGEN_KEY",
         "HUGGINGFACE_API_KEY",
+        "KIE_API_KEY",
         "MISTRAL_API_KEY",
         "MUSIC_API_TIMEOUT",
         "OPENAI_API_KEY",

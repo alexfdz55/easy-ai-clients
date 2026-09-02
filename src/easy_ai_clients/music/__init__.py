@@ -43,6 +43,7 @@ def generate(lyrics, model=None, *, api, style=None, prompt=None, **kwargs):
             - `"deapi"`: deAPI ACE-Step music generation.
             - `"elevenlabs"`: ElevenLabs Music.
             - `"google"`: Google Lyria.
+            - `"kie"`: Kie.ai Suno V5.5.
             - `"runware"`: Runware ACE-Step.
         style: Optional. Exact predefined style name. Use `None` for no preset.
         prompt: Optional. Music prompt. Required when `style` is `None`.

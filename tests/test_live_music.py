@@ -27,6 +27,7 @@ PROVIDER_ENV = {
     "deapi": "DEAPI_API_KEY",
     "elevenlabs": "ELEVENLABS_API_KEY",
     "google": "GOOGLE_API_KEY",
+    "kie": "KIE_API_KEY",
     "runware": "RUNWARE_API_KEY",
 }
 
@@ -34,6 +35,7 @@ PROVIDER_DURATION = {
     "deapi": 10,
     "elevenlabs": 3,
     "google": 30,
+    "kie": 15,
     "runware": 30,
 }
 MODEL_DURATION = {
@@ -48,6 +50,8 @@ MODEL_DURATION = {
     "lyria-3-clip-preview": 30,
     "lyria_3_pro_preview": 15,
     "lyria-3-pro-preview": 15,
+    "suno_v5_5": 15,
+    "V5_5": 15,
     "ace_step_v1_5_xl_base": 30,
     "runware:ace-step@v1.5-xl-base": 30,
     "ace_step_v1_5_xl_sft": 30,

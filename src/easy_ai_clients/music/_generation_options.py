@@ -91,6 +91,8 @@ def _parameters_for(provider, native_model):
         return _google_parameters(native_model)
     if provider == "runware":
         return _runware_parameters(native_model)
+    if provider == "kie":
+        return _kie_parameters()
     return {}
 
 
@@ -99,12 +101,14 @@ def _base_text_parameters(provider):
         "deapi": "caption",
         "elevenlabs": "prompt",
         "google": "contents[].parts[].text",
+        "kie": "style",
         "runware": "positivePrompt",
     }[provider]
     lyrics_field = {
         "deapi": "lyrics",
         "elevenlabs": "prompt",
         "google": "contents[].parts[].text",
+        "kie": "prompt",
         "runware": "settings.lyrics",
     }[provider]
 
@@ -336,6 +340,39 @@ def _runware_parameters(native_model):
                 "Optional. When omitted, it is not sent in the payload.",
                 "settings.vocalLanguage",
                 "Use to guide pronunciation and sung language.",
+            ),
+        }
+    )
+    return parameters
+
+
+def _kie_parameters():
+    parameters = _base_text_parameters("kie")
+    parameters.update(
+        {
+            "duration": _option(
+                False,
+                60,
+                "Integer, float, or numeric string in seconds. Numeric values are clamped to 10 to 360. Invalid or missing values use 60.",
+                "Sent as duration. Only honored by native model V5_5.",
+                "duration",
+                "Use to request a shorter or longer song within the local limit.",
+            ),
+            "title": _option(
+                False,
+                None,
+                "Free-form text, maximum 80 characters. When omitted, the first non-empty lyric line is used.",
+                "Required by Kie custom mode. The wrapper always sends a title.",
+                "title",
+                "Use to name the generated track.",
+            ),
+            "webhook_url": _option(
+                False,
+                "https://example.com/kie-callback",
+                "Free-form URL. Kie requires callBackUrl even when the caller only polls.",
+                "Passed through as callBackUrl. A dummy HTTPS URL is sent when omitted.",
+                "callBackUrl",
+                "Use when the provider should call an external URL.",
             ),
         }
     )

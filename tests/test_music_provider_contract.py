@@ -39,13 +39,14 @@ def block_requests_network(monkeypatch):
 
 
 def test_active_provider_and_model_matrix_is_explicit():
-    from easy_ai_clients.music._apis import deapi, elevenlabs, google, runware
+    from easy_ai_clients.music._apis import deapi, elevenlabs, google, kie, runware
     from easy_ai_clients.music._model_registry import PROVIDERS
 
-    assert PROVIDERS == ("deapi", "elevenlabs", "google", "runware")
+    assert PROVIDERS == ("deapi", "elevenlabs", "google", "kie", "runware")
     assert set(deapi.MODELS) == {"AceStep_1_5_Turbo", "AceStep_1_5_XL_Turbo_INT8"}
     assert set(elevenlabs.MODELS) == {"music_v2"}
     assert set(google.MODELS) == {"lyria-3-clip-preview", "lyria-3-pro-preview"}
+    assert set(kie.MODELS) == {"V5_5"}
     assert set(runware.MODELS) == {
         "runware:ace-step@v1.5-turbo",
         "runware:ace-step@v1.5-xl-base",
@@ -92,7 +93,7 @@ def test_standard_generation_uses_public_schema():
 
 
 def test_wrappers_reject_removed_public_parameters_before_network():
-    from easy_ai_clients.music._apis import deapi, elevenlabs, google, runware
+    from easy_ai_clients.music._apis import deapi, elevenlabs, google, kie, runware
 
     cases = [
         (deapi, {"output_format": "mp3"}, "Unsupported kwargs"),
@@ -100,12 +101,14 @@ def test_wrappers_reject_removed_public_parameters_before_network():
         (elevenlabs, {"output_format": "mp3_44100_128"}, "Unsupported kwargs"),
         (elevenlabs, {"_force_instrumental": True}, "Unsupported kwargs"),
         (google, {"output_format": "mp3"}, "Unsupported kwargs"),
+        (kie, {"output_format": "mp3"}, "Unsupported kwargs"),
         (runware, {"output_type": "URL"}, "Unsupported kwargs"),
         (runware, {"include_cost": True}, "Unsupported kwargs"),
         (runware, {"seed": 12345}, "Unsupported kwargs"),
         (deapi, {"negative_prompt": None}, "not supported"),
         (elevenlabs, {"negative_prompt": None}, "not supported"),
         (google, {"negative_prompt": None}, "not supported"),
+        (kie, {"negative_prompt": None}, "not supported"),
         (runware, {"negative_prompt": None}, "not supported"),
     ]
 
@@ -400,6 +403,8 @@ def test_model_registry_resolves_standard_keys_and_defaults():
         ("elevenlabs", "music_v2", "music_v2"),
         ("google", "lyria_3_clip_preview", "lyria-3-clip-preview"),
         ("google", "lyria_3_pro_preview", "lyria-3-pro-preview"),
+        ("kie", "suno_v5_5", "V5_5"),
+        ("kie", "V5_5", "V5_5"),
         ("runware", "ace_step_v1_5_turbo", "runware:ace-step@v1.5-turbo"),
         ("runware", "ace_step_v1_5_xl_base", "runware:ace-step@v1.5-xl-base"),
         ("runware", "ace_step_v1_5_xl_sft", "runware:ace-step@v1.5-xl-sft"),
@@ -417,6 +422,7 @@ def test_model_registry_resolves_standard_keys_and_defaults():
         "lyria-3-clip-preview",
         "lyria_3_clip_preview",
     )
+    assert resolve_model("kie", None) == ("V5_5", "suno_v5_5")
     assert resolve_model("runware", None) == (
         "runware:ace-step@v1.5-xl-turbo",
         "ace_step_v1_5_xl_turbo",
@@ -899,6 +905,16 @@ def test_runware_download_rejects_success_without_audio_url(monkeypatch):
     with pytest.raises(RuntimeError, match="audioURL"):
         runware.download_result(generation)
     assert generation["status"] == "failed"
+
+
+def test_require_env_strips_surrounding_quotes(monkeypatch):
+    from easy_ai_clients.music._common import require_env
+
+    monkeypatch.setenv("KIE_API_KEY", '"quoted-token"')
+    assert require_env("KIE_API_KEY") == "quoted-token"
+
+    monkeypatch.setenv("KIE_API_KEY", "'quoted-token'")
+    assert require_env("KIE_API_KEY") == "quoted-token"
 
 
 def test_load_env_preserves_existing_environment(monkeypatch, tmp_path):

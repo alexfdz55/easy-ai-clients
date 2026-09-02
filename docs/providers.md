@@ -177,6 +177,7 @@ underlying API expects.
 | `deapi` | `DEAPI_API_KEY` | [`deapi`](music/deapi.md) |
 | `elevenlabs` | `ELEVENLABS_API_KEY` | [`elevenlabs`](music/elevenlabs.md) |
 | `google` | `GOOGLE_API_KEY` | [`google`](music/google.md) |
+| `kie` | `KIE_API_KEY` | [`kie`](music/kie.md) |
 | `runware` | `RUNWARE_API_KEY` | [`runware`](music/runware.md) |
 
 ## Video - `easy_ai_clients.video`

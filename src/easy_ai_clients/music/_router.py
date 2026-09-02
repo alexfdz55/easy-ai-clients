@@ -82,7 +82,7 @@ def generate(lyrics, model=None, *, api, style=None, prompt=None, **kwargs):
 
 
 def _generate_with_adaptive_prompt_size(module, api, native_model, lyrics, style, prompt, kwargs):
-    attempts = _prompt_size_attempts(style, prompt)
+    attempts = _prompt_size_attempts(style, prompt, api=api)
     seen_requests = set()
     can_retry_with_large_prompt = len(attempts) > 1
 
@@ -138,8 +138,8 @@ def _generate_with_adaptive_prompt_size(module, api, native_model, lyrics, style
     )
 
 
-def _prompt_size_attempts(style, prompt):
-    if style is None or _has_direct_prompt(prompt):
+def _prompt_size_attempts(style, prompt, api=None):
+    if api == "kie" or style is None or _has_direct_prompt(prompt):
         return (("large", "large"),)
     return PROMPT_SIZE_ATTEMPTS
 

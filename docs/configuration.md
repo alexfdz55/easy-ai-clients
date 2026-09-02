@@ -65,6 +65,7 @@ the repository template:
 | `HEYGEN_API_KEY` | Compatibility alias for `HEYGEN_KEY` |
 | `HEYGEN_API_BASE` | Optional HeyGen API base URL override for tests or controlled environments |
 | `HUGGINGFACE_API_KEY` | Hugging Face text, audio transcription, image operations, and text-to-video |
+| `KIE_API_KEY` | `music.generate(api="kie")` |
 | `MISTRAL_API_KEY` | Mistral text, audio generation/transcription/voices, and image analysis |
 | `MUSIC_API_TIMEOUT` | Optional timeout override, in seconds, for music provider HTTP calls |
 | `OPENAI_API_KEY` | OpenAI text, audio, and image operations |
