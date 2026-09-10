@@ -213,3 +213,81 @@ def test_fal_pricing_estimate_reports_unavailable_on_lookup_failure(monkeypatch)
     assert result["cost_source"] == "unavailable"
     assert result["cost_is_estimated"] is True
     assert "pricing down" in result["cost_details"]["cost_lookup_error"]
+
+
+def test_falai_billable_units_header_prices_the_real_cost(monkeypatch):
+    """fal informa lo FACTURADO en `x-fal-billable-units`; se tarifa con la API oficial.
+
+    Medido 2026-09-09 con gpt-image-2.5: la misma escena 720×1280 costó 0.0039 unidades
+    con un prompt corto y 0.0241 con el prompt real y dos referencias. Una tabla por
+    resolución no puede saberlo; el header sí.
+    """
+    from easy_ai_clients.image._common import falai_utils
+    from easy_ai_clients.image._generate._apis import falai as provider
+
+    captured = {}
+
+    class FakeResponse:
+        headers = {"x-request-id": "req_header"}
+
+        def json(self):
+            return {
+                "request_id": "req_123",
+                "status_url": "https://queue.fal.run/status",
+                "response_url": "https://queue.fal.run/response",
+            }
+
+    def fake_unit_price(model, units, api_key, timeout_seconds=None):
+        captured["priced"] = {"model": model, "units": units, "api_key": api_key}
+        return {"cost_usd": 0.0241, "pricing_estimate": {"total_cost": 0.0241}}
+
+    monkeypatch.setattr(provider, "get_provider_api_key", lambda *args: "fal-key")
+    monkeypatch.setattr(
+        provider,
+        "fal_image_pricing_estimate",
+        lambda *args: {"cost_usd": 0.0100, "cost_is_estimated": True, "cost_source": "fal_pricing_estimate_api"},
+    )
+    monkeypatch.setattr(falai_utils, "fal_estimate_unit_price", fake_unit_price)
+    monkeypatch.setattr(
+        falai_utils, "_submit_queue", lambda **kwargs: (FakeResponse(), FakeResponse().json())  # noqa: SLF001
+    )
+    monkeypatch.setattr(
+        falai_utils,
+        "_poll_completion",  # noqa: SLF001
+        lambda **kwargs: (
+            {"request_id": "req_123", "images": [{"url": "https://example.com/image.png"}]},
+            {"status": "COMPLETED"},
+            "",
+            {"x-fal-billable-units": "0.0241", "x-fal-request-id": "req_123"},
+        ),
+    )
+    monkeypatch.setattr(falai_utils, "download_image_as_base64_png", lambda *a, **k: "BASE64")
+
+    result = provider.generate("A scene.", model="openai/gpt-image-2.5/flare/edit", timeout_seconds=11)
+
+    assert captured["priced"] == {"model": "openai/gpt-image-2.5/flare/edit", "units": pytest.approx(0.0241), "api_key": "fal-key"}
+    assert result["cost_usd"] == pytest.approx(0.0241)
+    assert result["cust_usd"] == pytest.approx(0.0241)
+    assert result["cost_source"] == "fal_billable_units"
+    assert result["cost_is_estimated"] is False
+    assert result["cost_details"]["billable_units"] == pytest.approx(0.0241)
+
+
+def test_billable_units_fall_back_to_the_estimate_when_pricing_fails(monkeypatch):
+    from easy_ai_clients.image._common import falai_utils
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("pricing down")
+
+    monkeypatch.setattr(falai_utils, "fal_estimate_unit_price", broken)
+    estimate = {"cost_usd": 0.01, "cost_is_estimated": True, "cost_source": "fal_pricing_estimate_api"}
+    out = falai_utils.billable_units_cost(
+        model="openai/gpt-image-2", headers={"x-fal-billable-units": "0.0072"}, api_key="k",
+        timeout_seconds=5, cost_metadata=estimate,
+    )
+    assert out["cost_usd"] == 0.01
+    assert out["cost_source"] == "fal_pricing_estimate_api"
+    assert out["cost_details"]["billable_units"] == pytest.approx(0.0072)
+    assert "billable_units_pricing_error" in out["cost_details"]
+    # Sin header no cambia nada.
+    assert falai_utils.billable_units_cost(model="m", headers={}, api_key="k", timeout_seconds=5, cost_metadata=estimate) is estimate

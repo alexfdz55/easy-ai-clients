@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import time
 
+from ..._falai_pricing import fal_estimate_unit_price
 from .http_utils import request
 from .image_utils import image_to_data_url
 from .provider_utils import (
@@ -88,14 +89,16 @@ def _poll_completion(*, submission, api_key, timeout_seconds):
         timeout_seconds: Deadline total para o polling.
 
     ### Retorna:
-        Tupla ``(final_payload, last_status, error)``. ``final_payload`` é
-        ``None`` em falha e ``error`` traz a mensagem pública.
+        Tupla ``(final_payload, last_status, error, final_headers)``. ``final_payload``
+        é ``None`` em falha e ``error`` traz a mensagem pública. ``final_headers`` são
+        os headers da resposta final (chaves em minúsculas): a fal informa ali a
+        quantidade faturada real (``x-fal-billable-units``).
     """
 
     status_url = submission.get("status_url")
     response_url = submission.get("response_url")
     if not status_url or not response_url:
-        return None, submission, "fal.ai did not return queue URLs for the request."
+        return None, submission, "fal.ai did not return queue URLs for the request.", {}
 
     deadline = time.time() + timeout_seconds
     last_status = dict(submission)
@@ -115,16 +118,72 @@ def _poll_completion(*, submission, api_key, timeout_seconds):
                 headers=_auth_headers(api_key),
                 timeout_seconds=timeout_seconds,
             )
-            return response_json(final_response), last_status, ""
+            return response_json(final_response), last_status, "", _response_headers(final_response)
         if status in _TERMINAL_FAILURE:
             error_detail = (
                 last_status.get("error")
                 or last_status.get("detail")
                 or f"fal.ai request ended with status {status}."
             )
-            return None, last_status, str(error_detail)
+            return None, last_status, str(error_detail), {}
         time.sleep(_POLL_INTERVAL_SECONDS)
-    return None, last_status, "fal.ai polling reached the configured timeout."
+    return None, last_status, "fal.ai polling reached the configured timeout.", {}
+
+
+def _response_headers(response):
+    """Headers de uma resposta HTTP como dict com chaves em minúsculas (ou ``{}``)."""
+
+    try:
+        return {str(k).lower(): str(v) for k, v in dict(response.headers).items()}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+BILLABLE_UNITS_HEADER = "x-fal-billable-units"
+
+
+def billable_units_cost(*, model, headers, api_key, timeout_seconds, cost_metadata=None):
+    """Custo REAL a partir da quantidade faturada que a fal devolve no resultado.
+
+    A fal informa ``x-fal-billable-units`` na resposta final; para modelos cobrados
+    por token (gpt-image) esse número varia com o prompt e as referências, então uma
+    tabela por resolução sempre erra (medido: a mesma cena 720×1280 custou $0.0039 com
+    um prompt curto e $0.0241 com o prompt real e duas referências). A quantidade é
+    convertida em dólares pela API oficial de preços da fal (``unit_price``), que é a
+    mesma tarifa do painel. Se o header não vier ou a API falhar, devolve o
+    ``cost_metadata`` recebido (a estimativa de antes), anotando as unidades quando
+    existirem.
+    """
+
+    raw = (headers or {}).get(BILLABLE_UNITS_HEADER)
+    try:
+        units = float(raw)
+    except (TypeError, ValueError):
+        return cost_metadata
+    if units <= 0:
+        return cost_metadata
+    base = dict(cost_metadata or {})
+    details = dict(base.get("cost_details") or {})
+    details["billable_units"] = units
+    try:
+        priced = fal_estimate_unit_price(
+            model, units, api_key, timeout_seconds=timeout_seconds
+        )
+    except Exception as exc:  # noqa: BLE001
+        details["billable_units_pricing_error"] = str(exc)[:200]
+        base["cost_details"] = details
+        return base
+    return {
+        "cost_usd": float(priced["cost_usd"]),
+        "cost_currency": "USD",
+        "cost_is_estimated": False,
+        "cost_source": "fal_billable_units",
+        "cost_reason": (
+            "fal.ai reported the billed quantity in x-fal-billable-units; priced with "
+            "the official pricing API at the account's unit rate."
+        ),
+        "cost_details": {**details, "pricing_estimate": priced.get("pricing_estimate")},
+    }
 
 
 def _extract_image_url(payload):
@@ -185,11 +244,13 @@ def _run_image_job(
         )
         submit_request_id = extract_request_id(submit_response, submit_payload)
 
-        final_payload, last_status, error = _poll_completion(
+        polled = _poll_completion(
             submission=submit_payload,
             api_key=api_key,
             timeout_seconds=timeout_seconds,
         )
+        final_payload, last_status, error = polled[0], polled[1], polled[2]
+        final_headers = polled[3] if len(polled) > 3 else {}
         request_id = (
             extract_request_id(payload=final_payload or last_status or {})
             or submit_request_id
@@ -203,6 +264,13 @@ def _run_image_job(
                 ),
                 request_id=request_id,
             )
+        cost_metadata = billable_units_cost(
+            model=model,
+            headers=final_headers,
+            api_key=api_key,
+            timeout_seconds=timeout_seconds,
+            cost_metadata=cost_metadata,
+        )
 
         blocked = detect_block(final_payload, operation=operation)
         if blocked is not None:
@@ -452,11 +520,12 @@ def analyze_image(
         )
         submit_request_id = extract_request_id(submit_response, submit_payload)
 
-        final_payload, last_status, error = _poll_completion(
+        polled = _poll_completion(
             submission=submit_payload,
             api_key=api_key,
             timeout_seconds=timeout_seconds,
         )
+        final_payload, last_status, error = polled[0], polled[1], polled[2]
         request_id = (
             extract_request_id(payload=final_payload or last_status or {})
             or submit_request_id
