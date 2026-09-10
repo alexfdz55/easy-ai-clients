@@ -57,12 +57,14 @@ def test_generate_sends_custom_mode_payload(kie_module, monkeypatch):
     assert captured["method"] == "POST"
     assert captured["url"] == kie_module.GENERATE_ENDPOINT
     assert payload["prompt"] == TEST_LYRICS
-    assert payload["style"] == STYLE_TAGS
+    # Suno no acepta `duration`: viaja como pista dentro del estilo.
+    assert payload["style"].startswith(STYLE_TAGS)
+    assert "about 45 seconds long" in payload["style"]
+    assert "duration" not in payload
     assert payload["title"] == "Morning Light"
     assert payload["customMode"] is True
     assert payload["instrumental"] is False
     assert payload["model"] == "V5_5"
-    assert payload["duration"] == 45
     assert payload["vocalGender"] == "f"
     assert payload["callBackUrl"] == kie_module.DEFAULT_CALLBACK_URL
     assert generation["provider"] == "kie"
@@ -98,7 +100,9 @@ def test_duration_is_normalized_before_payload(kie_module, monkeypatch, duration
         kwargs["duration"] = duration
 
     kie_module.generate(**kwargs)
-    assert captured["payload"]["duration"] == expected
+    # Kie no tiene campo de duración: la pista normalizada va en el estilo.
+    assert "duration" not in captured["payload"]
+    assert f"about {expected} seconds long" in captured["payload"]["style"]
 
 
 def test_title_falls_back_to_first_lyric_line(kie_module, monkeypatch):

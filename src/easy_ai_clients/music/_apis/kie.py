@@ -92,6 +92,11 @@ def generate(lyrics, model="V5_5", **kwargs):
     gender = kwargs.pop("gender", None)
     title = _title_from_lyrics(lyrics, kwargs.pop("title", None))
     callback_url = kwargs.pop("webhook_url", None) or DEFAULT_CALLBACK_URL
+    # Kie/Suno NO tiene parámetro de duración: la longitud la fija la letra y el
+    # propio modelo (medido 2026-09-10: 115 palabras pedidas para 60 s → 110 s, con
+    # 19 s de intro y 20 s de cola instrumentales). `duration` viaja como pista de
+    # estilo, que Suno sí lee, y queda en `cost_details` para el caller.
+    style = _style_with_duration(style, duration)
     _check_input_limits(model, style, lyrics)
 
     payload = {
@@ -102,7 +107,6 @@ def generate(lyrics, model="V5_5", **kwargs):
         "instrumental": False,
         "model": model,
         "callBackUrl": callback_url,
-        "duration": duration,
     }
     vocal_gender = _vocal_gender(gender)
     if vocal_gender:
@@ -313,6 +317,17 @@ def _attach_take_metadata(generation, data, audio_urls=None):
             is_estimated=True,
         )
     return generation
+
+
+def _style_with_duration(style, duration):
+    """Pista de duración en los tags de estilo (Suno no acepta `duration`)."""
+    if not style or not duration:
+        return style
+    hint = f"about {int(duration)} seconds long, short intro, ends right after the last line"
+    if hint in style:
+        return style
+    combined = f"{style}, {hint}"
+    return combined if len(combined) <= STYLE_LIMIT else style
 
 
 def _title_from_lyrics(lyrics, title=None):

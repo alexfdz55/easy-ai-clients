@@ -69,11 +69,11 @@ Duration behavior:
 
 | Standard model key | Native model ID | Min | Max | Missing or invalid `duration` | Provider application |
 | --- | --- | ---: | ---: | --- | --- |
-| `suno_v5_5` | `V5_5` | `10s` | `360s` | Uses `60s` | Sent as `duration` |
+| `suno_v5_5` | `V5_5` | `10s` | `360s` | Uses `60s` | Not a Kie parameter: appended to `style` as a hint (`about N seconds long, short intro, ends right after the last line`). The real length follows the lyrics (≈1.6 sung words/s plus intro/outro). |
 
 | Parameter | Behavior |
 | --- | --- |
-| `duration` | Sent as `duration`. Numeric values are clamped to `10` to `360`. Missing or invalid values use `60`. |
+| `duration` | Kie has no duration field. Clamped to `10`-`360` (default `60`), appended to `style` as a hint and recorded in `cost_details`. Control the length through the lyrics. |
 | `title` | Sent as `title`, max 80 characters. When omitted, the first non-empty lyric line is used. |
 | `gender` | `male` / `female` map to `vocalGender` `m` / `f`. `both` is not sent. |
 | `webhook_url` | Passed through as `callBackUrl`. |

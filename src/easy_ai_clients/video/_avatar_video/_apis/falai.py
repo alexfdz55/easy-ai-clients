@@ -25,7 +25,16 @@ MODEL_ALIASES = {
     "fal_veed_fabric_1_0": "veed/fabric-1.0",
 }
 
+LTX_AUDIO_TO_VIDEO = "fal-ai/ltx-2.3-22b/audio-to-video"
+# fal factura LTX por megapíxel-frame ($0.001605/MP a 24 fps): 720p = 0.92 MP → 0,0355 $/s.
+_LTX_RES_SHORT = {"480p": 480, "720p": 720, "1080p": 1080}
+_LTX_ASPECT = {"9:16": (9, 16), "16:9": (16, 9), "1:1": (1, 1), "portrait_16_9": (9, 16), "landscape_16_9": (16, 9), "square_hd": (1, 1)}
+
 DOCUMENTED_MODEL_PRICING = {
+    LTX_AUDIO_TO_VIDEO: {
+        "unit": "resolution_seconds",
+        "prices_usd": {"480p": 0.016, "720p": 0.036, "1080p": 0.08},
+    },
     "fal-ai/bytedance/omnihuman/v1.5": {"price_usd": 0.16, "unit": "seconds"},
     "veed/fabric-1.0": {
         "unit": "resolution_seconds",
@@ -44,6 +53,7 @@ DOCUMENTED_MODEL_PRICING = {
 
 COMMON_OPTIONS = {
     "model",
+    "aspect_ratio",
     "timeout_seconds",
     "poll_interval_seconds",
     "extra_payload",
@@ -60,7 +70,36 @@ def _selected_model(kwargs):
     return MODEL_ALIASES.get(str(selected).strip(), selected)
 
 
+def _ltx_video_size(resolution, aspect_ratio):
+    """Dims explícitas para LTX: la «p» es el lado corto (720p vertical = 720×1280)."""
+    short = _LTX_RES_SHORT.get(str(resolution or "").strip())
+    if not short:
+        return None
+    aw, ah = _LTX_ASPECT.get(str(aspect_ratio or "").strip() or "9:16", (9, 16))
+    if aw >= ah:
+        height, width = short, round(short * aw / ah)
+    else:
+        width, height = short, round(short * ah / aw)
+    return {"width": width - width % 2, "height": height - height % 2}
+
+
 def _build_payload(model, prepared, kwargs):
+    if model == LTX_AUDIO_TO_VIDEO:
+        # Imagen + audio → video completo con movimiento y lip-sync (hasta 20 s). El
+        # prompt es el del plano; la duración sigue al audio.
+        payload = {
+            "image_url": prepared["image"],
+            "audio_url": prepared["audio"],
+            "prompt": kwargs.get("prompt") or prepared["text"] or "Natural performance synchronized with the provided audio.",
+            "match_audio_length": True,
+        }
+        size = kwargs.get("video_size") or _ltx_video_size(kwargs.get("resolution", "720p"), kwargs.get("aspect_ratio"))
+        if size:
+            payload["video_size"] = size
+        if kwargs.get("video_quality"):
+            payload["video_quality"] = kwargs["video_quality"]
+        return _forward_extra_payload(payload, {k: v for k, v in kwargs.items() if k not in ("video_size", "resolution", "video_quality")})
+
     if model == "fal-ai/bytedance/omnihuman/v1.5":
         payload = {
             "image_url": prepared["image"],
