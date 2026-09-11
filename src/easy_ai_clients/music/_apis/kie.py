@@ -58,6 +58,8 @@ def generate(lyrics, model="V5_5", **kwargs):
         model: Optional. Accepted value: `"V5_5"`.
         **kwargs: Optional provider parameters:
             - `prompt`: Required. Compact style tags sent as Kie `style`.
+            - `negative_tags`: Optional. Text or list of what must NOT sound
+              (sent as Kie `negativeTags`).
             - `negative_prompt`: Not supported. Passing a value raises
               `ValueError`.
             - `duration`: Song duration in seconds. Missing or invalid values
@@ -88,8 +90,9 @@ def generate(lyrics, model="V5_5", **kwargs):
         DURATION_MAX,
         default=DURATION_DEFAULT,
     )
-    reject_unknown_kwargs(kwargs, {"title", "gender", "webhook_url"})
+    reject_unknown_kwargs(kwargs, {"title", "gender", "webhook_url", "negative_tags"})
     gender = kwargs.pop("gender", None)
+    negative_tags = _clean_negative_tags(kwargs.pop("negative_tags", None))
     title = _title_from_lyrics(lyrics, kwargs.pop("title", None))
     callback_url = kwargs.pop("webhook_url", None) or DEFAULT_CALLBACK_URL
     # Kie/Suno NO tiene parámetro de duración: la longitud la fija la letra y el
@@ -111,6 +114,8 @@ def generate(lyrics, model="V5_5", **kwargs):
     vocal_gender = _vocal_gender(gender)
     if vocal_gender:
         payload["vocalGender"] = vocal_gender
+    if negative_tags:
+        payload["negativeTags"] = negative_tags
 
     response = request_json(
         "POST",
@@ -317,6 +322,18 @@ def _attach_take_metadata(generation, data, audio_urls=None):
             is_estimated=True,
         )
     return generation
+
+
+def _clean_negative_tags(value):
+    """`negativeTags` de Kie: texto libre (o lista) de lo que NO debe sonar."""
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple, set)):
+        value = ", ".join(str(v).strip() for v in value if str(v).strip())
+    if not isinstance(value, str):
+        raise ValueError("negative_tags must be a string or a list of strings")
+    text = value.strip()
+    return text[:STYLE_LIMIT] or None
 
 
 def _style_with_duration(style, duration):

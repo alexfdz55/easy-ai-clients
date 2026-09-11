@@ -277,3 +277,19 @@ def test_reggae_preset_has_no_artist_flagged_tag():
 
     assert "skank" not in repr(reggae.STYLE_PRESET).lower()
 
+
+def test_negative_tags_travel_as_negativeTags(kie_module, monkeypatch):
+    captured = {}
+
+    def fake_request_json(method, url, **kwargs):
+        captured["payload"] = kwargs["json_payload"]
+        return {"code": 200, "data": {"taskId": "task-1", "status": "PENDING"}}
+
+    monkeypatch.setattr(kie_module, "request_json", fake_request_json)
+    kie_module.generate(TEST_LYRICS, prompt=STYLE_TAGS, negative_tags=["long intro", "guitar solo"])
+    assert captured["payload"]["negativeTags"] == "long intro, guitar solo"
+    assert "negative_tags" not in captured["payload"]
+
+    kie_module.generate(TEST_LYRICS, prompt=STYLE_TAGS)
+    assert "negativeTags" not in captured["payload"]
+

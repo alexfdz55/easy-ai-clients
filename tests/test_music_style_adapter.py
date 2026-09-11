@@ -546,3 +546,16 @@ def _flatten(value):
     if isinstance(value, list):
         return " ".join(_flatten(item) for item in value)
     return str(value)
+
+
+def test_style_notes_are_appended_to_the_rendered_prompt():
+    from easy_ai_clients.music._style_adapter import build_generation_request
+
+    request = build_generation_request("kie", "V5_5", "la la", style="pop", kwargs={"style_notes": "no intro, ends right after the last line"})
+    prompt = request["kwargs"]["prompt"]
+    assert prompt.endswith(", no intro, ends right after the last line")
+    assert "style_notes" not in request["kwargs"]
+
+    request = build_generation_request("kie", "V5_5", "la la", prompt="dreamy pop", kwargs={"style_notes": "short"})
+    assert request["kwargs"]["prompt"] == "dreamy pop, short"
+

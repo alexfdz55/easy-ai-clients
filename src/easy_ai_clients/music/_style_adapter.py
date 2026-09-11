@@ -197,8 +197,11 @@ def build_generation_request(
         prompt: Optional. Caller prompt. If provided with a preset, it replaces
             the preset-rendered prompt.
         kwargs: Optional. Caller kwargs. These override generated preset kwargs.
-            `language`, `gender`, and `voice_description` are local prompt
-            controls consumed before provider dispatch.
+            `language`, `gender`, `voice_description` and `style_notes` are local
+            prompt controls consumed before provider dispatch. `style_notes` is
+            free text appended to the rendered style prompt (also to a caller
+            prompt), for structure or arrangement directions the preset does
+            not carry.
         style_prompt_size: Optional. Preset style prompt size. Accepted values:
             - "small": Use the shortest style prompt.
             - "medium": Use the medium style prompt.
@@ -218,6 +221,7 @@ def build_generation_request(
     language_override = user_kwargs.pop("language", None)
     gender = user_kwargs.pop("gender", None)
     voice_description = user_kwargs.pop("voice_description", None)
+    style_notes = _clean_prompt_text("style_notes", user_kwargs.pop("style_notes", None))
     user_prompt = _clean_prompt_text("prompt", prompt)
     user_prompt_provided = user_prompt is not None
 
@@ -263,6 +267,8 @@ def build_generation_request(
         if selected_gender in {"male", "female"}:
             generated_kwargs["gender"] = selected_gender
 
+    if style_notes:
+        prompt = f"{prompt}, {style_notes}" if prompt else style_notes
     if prompt is not None:
         generated_kwargs["prompt"] = prompt
 
