@@ -357,7 +357,12 @@ def _vocal_gender(gender):
 
 def _failure_message(stage, data):
     status = str(data.get("status") or data.get("state") or "error").strip().lower()
-    return f"kie generation failed during {stage} with status {status}: {_safe_detail(data)}"
+    # errorCode/errorMessage PRIMERO: el `param` (tags + letra) llenaba el detalle
+    # recortado y el motivo real («artist name skank», «Internal Error») no se veía.
+    code = data.get("errorCode")
+    message = str(data.get("errorMessage") or "").strip()
+    reason = f" (code {code}: {message})" if code is not None or message else ""
+    return f"kie generation failed during {stage} with status {status}{reason}: {_safe_detail(data)}"
 
 
 def _safe_detail(value):

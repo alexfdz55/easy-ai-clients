@@ -261,3 +261,19 @@ def test_public_router_keeps_the_second_take_url_verbatim(kie_module, monkeypatc
     assert public["metadata"]["alternate_audio_url"] == "https://cdn.example/b.mp3"
     assert public["metadata"]["take_count"] == 2
     assert generation["metadata"]["alternate_audio_url"] == "https://cdn.example/b.mp3"
+
+
+def test_failure_message_leads_with_the_provider_reason(kie_module):
+    """El motivo real (código y mensaje de Kie) va antes del payload recortado."""
+    message = kie_module._failure_message(
+        "status",
+        {"status": "GENERATE_AUDIO_FAILED", "errorCode": 400, "errorMessage": "Your tags contain artist name skank", "param": "x" * 2000},
+    )
+    assert message.startswith("kie generation failed during status with status generate_audio_failed (code 400: Your tags contain artist name skank)")
+
+
+def test_reggae_preset_has_no_artist_flagged_tag():
+    from easy_ai_clients.music.styles import reggae
+
+    assert "skank" not in repr(reggae.STYLE_PRESET).lower()
+

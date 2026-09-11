@@ -1,9 +1,11 @@
+# «skank» está en la lista de artistas de Suno: Kie rechaza el tag (400 «Your tags
+# contain artist name skank», 2026-09-10). Se describe la guitarra sin esa palabra.
 STYLE_PRESET = {'id': 'reggae',
  'description': {'pt': 'Reggae com groove one-drop, rockers ou steppers, baixo '
-                       'melodico pesado, guitarra skank, organ bubble, metais, espaco '
+                       'melodico pesado, guitarra em contratempo, organ bubble, metais, espaco '
                        'dub e vocal caloroso.',
                  'en': 'Reggae with one-drop, rockers, or steppers groove, heavy '
-                       'melodic bass, skank guitar, organ bubble, horns, dub space, '
+                       'melodic bass, offbeat rhythm guitar, organ bubble, horns, dub space, '
                        'and warm vocals.'},
  'default_language': 'en-US',
  'tempo_bpm': 78,
@@ -12,7 +14,7 @@ STYLE_PRESET = {'id': 'reggae',
  'instrumentation': ['round electric bass',
                      'one-drop drums',
                      'rim clicks',
-                     'skank guitar',
+                     'offbeat rhythm guitar',
                      'organ bubble',
                      'horn lines',
                      'spring reverb',
@@ -25,18 +27,18 @@ STYLE_PRESET = {'id': 'reggae',
                  'version-style outro'],
  'energy': 'medium',
  'mood': ['spacious', 'warm', 'resistant', 'spiritual', 'communal'],
- 'mix_target': 'heavy melodic bass, dry offbeat skank, dub depth, and clear vocal '
+ 'mix_target': 'heavy melodic bass, dry offbeat guitar, dub depth, and clear vocal '
                'space',
  'style_prompts': {'small': 'Reggae with relaxed one-drop, rockers, or steppers '
                             'groove, heavy melodic bass, offbeat guitar.',
                    'medium': 'Reggae with relaxed one-drop, rockers, or steppers '
-                             'groove, heavy melodic bass, offbeat guitar skank, organ '
+                             'groove, heavy melodic bass, offbeat guitar chops, organ '
                              'bubble, horn responses, dub space, toasting or harmony '
                              'melodic layers, and warm communal delivery. Use a 4/4 '
                              'framework around 78 BPM in A minor, with medium energy '
                              'and spacious, warm mood.',
                    'large': 'Reggae with relaxed one-drop, rockers, or steppers '
-                            'groove, heavy melodic bass, offbeat guitar skank, organ '
+                            'groove, heavy melodic bass, offbeat guitar chops, organ '
                             'bubble, horn responses, dub space, toasting or harmony '
                             'melodic layers, and warm communal delivery. Use a 4/4 '
                             'framework around 78 BPM in A minor, with medium energy '
@@ -45,9 +47,9 @@ STYLE_PRESET = {'id': 'reggae',
                             'chorus or chant, horn response, dub dropout, '
                             'version-style outro, keeping transitions clear for '
                             'automatic music generation. Center the arrangement on '
-                            'round electric bass, one-drop drums, rim clicks, skank '
+                            'round electric bass, one-drop drums, rim clicks, offbeat guitar '
                             'guitar, organ bubble, horn lines. Shape the mix toward '
-                            'heavy melodic bass, dry offbeat skank, dub depth.'},
+                            'heavy melodic bass, dry offbeat guitar, dub depth.'},
  'voice_presets': {'default_gender': 'male',
                    'small': {'male': 'Natural male reggae lead with native diction, '
                                      'warm tone, easy phrasing, and clean releases.',
