@@ -241,3 +241,23 @@ def test_non_success_code_raises(kie_module, monkeypatch):
     )
     with pytest.raises(RuntimeError, match="code 500"):
         kie_module.generate(lyrics=TEST_LYRICS, prompt=STYLE_TAGS)
+
+
+def test_public_router_keeps_the_second_take_url_verbatim(kie_module, monkeypatch):
+    """`sanitize` redacta todas las claves `*_url`; la segunda toma tiene que sobrevivir
+    al diccionario público, porque el caller la baja antes de que caduque."""
+    from easy_ai_clients import music
+
+    def fake_download(generation, provider, audio_url, extension="mp3"):
+        generation["output_path"] = "outputs/music/temp/kie/result.mp3"
+        generation["status"] = "completed"
+        return generation
+
+    monkeypatch.setattr(kie_module, "request_json", lambda *args, **kwargs: _success_record())
+    monkeypatch.setattr(kie_module, "download_generation_audio", fake_download)
+
+    generation = standard_generation("kie", "V5_5", "task-1")
+    public = music.download_result(generation, api="kie")
+    assert public["metadata"]["alternate_audio_url"] == "https://cdn.example/b.mp3"
+    assert public["metadata"]["take_count"] == 2
+    assert generation["metadata"]["alternate_audio_url"] == "https://cdn.example/b.mp3"

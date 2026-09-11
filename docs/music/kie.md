@@ -98,8 +98,9 @@ Removed technical kwargs are rejected before provider dispatch:
 
 A Kie generate always returns two takes. The public contract is one
 `output_path`: `download_result` saves `sunoData[0]`. The second URL is stored
-in `metadata.alternate_audio_url` (redacted in the public sanitized dictionary)
-together with `take_count` and `selected_take`.
+in `metadata.alternate_audio_url` **verbatim** (the only `*_url` key the public
+sanitizer keeps, because the caller must download it before it expires) together
+with `take_count` and `selected_take`.
 
 ```python
 {

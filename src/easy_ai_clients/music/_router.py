@@ -239,7 +239,14 @@ def _public_generation(generation):
     output["cost_source"] = output["cost_source"] or "unavailable"
     output["cost_is_estimated"] = bool(output["cost_is_estimated"])
     output["cost_details"] = sanitize(dict(output["cost_details"] or {}))
-    output["metadata"] = sanitize(dict(output["metadata"] or {}))
+    raw_metadata = dict(output["metadata"] or {})
+    output["metadata"] = sanitize(raw_metadata)
+    # The second take of a Kie/Suno generate is a plain provider CDN URL the caller
+    # needs verbatim to download it (it expires); `sanitize` redacts every `*_url`
+    # key, which silently turned the two-take contract into one take (2026-09-10).
+    alternate = raw_metadata.get("alternate_audio_url")
+    if isinstance(alternate, str) and alternate.startswith(("http://", "https://")):
+        output["metadata"]["alternate_audio_url"] = alternate
     return output
 
 
