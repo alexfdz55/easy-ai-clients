@@ -3,6 +3,34 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.16.0 - 2026-09-11
+
+### Added
+
+- Added `style_notes` to music generation: free text that the style adapter
+  appends to the rendered style prompt (or to a caller prompt) and consumes
+  before provider dispatch, so every music provider accepts it.
+- Added `negative_tags` for Kie/Suno (`api="kie"`), sent as `negativeTags`
+  (text or a list of strings).
+- Added LTX 2.3 audio-to-video to the fal.ai avatar adapter (`video_size` by
+  resolution and format, `match_audio_length`, price per resolution-second).
+- fal.ai image results now price the billed quantity from
+  `x-fal-billable-units` with the official pricing API
+  (`cost_source="fal_billable_units"`, `cost_is_estimated=False`). Without the
+  header, or with the pricing API down, the previous estimate is kept.
+
+### Changed
+
+- Kie/Suno does not accept `duration`: it travels as a hint inside `style` and
+  is reported in `cost_details`. Kie is retried once before the fallback.
+
+### Fixed
+
+- `alternate_audio_url` is no longer redacted in the public music dictionary,
+  so callers can download Kie's second take before it expires.
+- The reggae preset no longer says "skank", which Suno rejects as an artist
+  name. Kie failure messages now lead with `errorCode` and `errorMessage`.
+
 ## 0.15.0 - 2026-09-02
 
 ### Added
