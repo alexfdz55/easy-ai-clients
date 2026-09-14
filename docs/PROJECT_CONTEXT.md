@@ -65,7 +65,7 @@ pip install -e ".[dev]"
 ```
 
 The package version is defined in both `pyproject.toml` and
-`src/easy_ai_clients/__init__.py`. Both currently show `0.16.0`.
+`src/easy_ai_clients/__init__.py`. Both currently show `0.17.0`.
 
 ## Repository Structure Summary
 
@@ -293,7 +293,7 @@ a private dotenv file. If it is unset, current live-test helpers look for
 | `MISTRAL_API_KEY` | Mistral text, audio, voices, and image analysis |
 | `MUSIC_API_TIMEOUT` | Optional music-provider HTTP timeout override; `.env.example` uses `60` |
 | `OPENAI_API_KEY` | OpenAI text, audio, and image operations |
-| `OPENROUTER_API_KEY` | OpenRouter text, audio, image, and catalog/cost lookup paths |
+| `OPENROUTER_API_KEY` | OpenRouter text, audio, image, video, and catalog/cost lookup paths |
 | `REPLICATE_API_TOKEN` | Replicate avatar-video predictions |
 | `RUNWARE_API_KEY` | Runware music generation |
 | `RUNWAYML_API_SECRET` | Runway audio, image, video, avatar, and upload operations |

@@ -3,6 +3,16 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0 - 2026-09-14
+
+### Added
+
+- Added OpenRouter Seedance video adapters behind `api="openrouter"` for
+  `video.text_to_video` and `video.image_to_video` (first frame and
+  first-plus-last frame), plus image/video/audio `input_references`. Auth uses
+  `OPENROUTER_API_KEY` against `POST/GET /api/v1/videos`. Completed jobs read
+  `usage.cost` as `cost_source="openrouter_video_usage"`.
+
 ## 0.16.0 - 2026-09-11
 
 ### Added

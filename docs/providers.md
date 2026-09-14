@@ -200,6 +200,7 @@ requires `output_path`.
 | `hedra` | `HEDRA_API_KEY` | [`hedra`](video/text_to_video/hedra.md) |
 | `heygen` | `HEYGEN_KEY` | [`heygen`](video/text_to_video/heygen.md) |
 | `huggingface` | `HUGGINGFACE_API_KEY` | [`huggingface`](video/text_to_video/huggingface.md) |
+| `openrouter` | `OPENROUTER_API_KEY` | [`openrouter`](video/text_to_video/openrouter.md) |
 | `runway` | `RUNWAYML_API_SECRET` | [`runway`](video/text_to_video/runway.md) |
 | `together` | `TOGETHER_API_KEY` | [`together`](video/text_to_video/together.md) |
 | `xai` | `XAI_API_KEY` | [`xai`](video/text_to_video/xai.md) |
@@ -213,6 +214,7 @@ requires `output_path`.
 | `google` | `GOOGLE_API_KEY` | [`google`](video/image_to_video/google.md) |
 | `hedra` | `HEDRA_API_KEY` | [`hedra`](video/image_to_video/hedra.md) |
 | `heygen` | `HEYGEN_KEY` | [`heygen`](video/image_to_video/heygen.md) |
+| `openrouter` | `OPENROUTER_API_KEY` | [`openrouter`](video/image_to_video/openrouter.md) |
 | `runway` | `RUNWAYML_API_SECRET` | [`runway`](video/image_to_video/runway.md) |
 | `together` | `TOGETHER_API_KEY` | [`together`](video/image_to_video/together.md) |
 | `xai` | `XAI_API_KEY` | [`xai`](video/image_to_video/xai.md) |

@@ -69,7 +69,7 @@ the repository template:
 | `MISTRAL_API_KEY` | Mistral text, audio generation/transcription/voices, and image analysis |
 | `MUSIC_API_TIMEOUT` | Optional timeout override, in seconds, for music provider HTTP calls |
 | `OPENAI_API_KEY` | OpenAI text, audio, and image operations |
-| `OPENROUTER_API_KEY` | OpenRouter text, audio, image, and catalog/cost lookup paths |
+| `OPENROUTER_API_KEY` | OpenRouter text, audio, image, video, and catalog/cost lookup paths |
 | `REPLICATE_API_TOKEN` | Replicate avatar-video prediction operations |
 | `RUNWARE_API_KEY` | `music.generate(api="runware")` |
 | `RUNWAYML_API_SECRET` | Runway audio, image, video generation, avatar-video, ephemeral uploads, and custom avatar creation |
