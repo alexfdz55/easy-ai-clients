@@ -293,3 +293,20 @@ def test_negative_tags_travel_as_negativeTags(kie_module, monkeypatch):
     kie_module.generate(TEST_LYRICS, prompt=STYLE_TAGS)
     assert "negativeTags" not in captured["payload"]
 
+
+
+def test_failures_carry_the_kie_task_id(kie_module, monkeypatch):
+    # The message stays the same; the exception also says which task failed.
+    monkeypatch.setattr(
+        kie_module,
+        "request_json",
+        lambda *args, **kwargs: {
+            "code": 200,
+            "data": {"taskId": "task-1", "status": "GENERATE_AUDIO_FAILED"},
+        },
+    )
+    for call in (kie_module.get_status, kie_module.download_result):
+        generation = standard_generation("kie", "V5_5", "task-1")
+        with pytest.raises(RuntimeError, match="generate_audio_failed") as caught:
+            call(generation)
+        assert caught.value.request_id == "task-1"

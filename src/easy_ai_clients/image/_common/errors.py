@@ -27,11 +27,16 @@ class ProviderResponseError(ApiImageError):
         status_code: int | None = None,
         response_text: str | None = None,
         is_transient: bool = False,
+        headers: dict[str, str] | None = None,
+        request_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.response_text = response_text
         self.is_transient = is_transient
+        # Lower-case keys, and the provider request id when the response carried one.
+        self.headers = {str(k).lower(): str(v) for k, v in (headers or {}).items()}
+        self.request_id = request_id or ""
 
 
 @dataclass(frozen=True)

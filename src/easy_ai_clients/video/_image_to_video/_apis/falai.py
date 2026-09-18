@@ -4,6 +4,7 @@ import math
 
 from ..._falai_pricing import FAL_ESTIMATE_OPTIONS, fal_pricing_estimate
 from ..._shared import (
+    ProviderJobError,
     extract_video_url,
     fal_async_refs,
     fal_get_result,
@@ -208,7 +209,10 @@ def generate_image_to_video(prompt, image_path=None, image_url=None, output_path
     response = raw.get("response") or {}
     video_url = extract_video_url(response)
     if not video_url:
-        raise RuntimeError(f"fal.ai image-to-video result for {request_id} did not include a video URL.")
+        raise ProviderJobError(
+            f"fal.ai image-to-video result for {request_id} did not include a video URL.",
+            request_id=request_id,
+        )
     extra = {**async_refs, "cost_reason": cost["cost_reason"]}
     raw_response = {"submission": submission, "status": raw.get("status") or {}, "response": response}
     return build_result(PROVIDER, model, "completed", request_id, video_url, prepared["output_path"], cost["cost_usd"], cost["cost_is_estimated"], cost["cost_source"], raw_response, extra)
@@ -244,7 +248,10 @@ def get_generation_result(request_id, output_path=None, **kwargs):
     )
     video_url = extract_video_url(raw)
     if not video_url:
-        raise RuntimeError(f"fal.ai image-to-video result for {request_id} did not include a video URL.")
+        raise ProviderJobError(
+            f"fal.ai image-to-video result for {request_id} did not include a video URL.",
+            request_id=request_id,
+        )
     from ..._shared import normalize_output_path
 
     extra = {**refs, "cost_reason": cost["cost_reason"]}

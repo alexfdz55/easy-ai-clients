@@ -9,6 +9,7 @@ import base64
 import json
 import mimetypes
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -24,6 +25,42 @@ RUNWAY_BASE_URL = "https://api.dev.runwayml.com"
 RUNWAY_API_VERSION = "2024-11-06"
 GOOGLE_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 HEDRA_BASE_URL = "https://api.hedra.com/web-app/public"
+
+_REQUESTS_PATH = re.compile(r"/requests/([^/?#]+)")
+
+
+class ProviderJobError(RuntimeError):
+    """A provider job or request failed.
+
+    Same message as the plain ``RuntimeError`` it replaces (callers classify retries by
+    the text), plus the provider ``request_id`` and HTTP ``status_code`` when known.
+    """
+
+    def __init__(self, message, *, request_id=None, status_code=None):
+        super().__init__(message)
+        self.request_id = str(request_id or "")
+        self.status_code = status_code
+
+
+class ProviderJobTimeout(TimeoutError):
+    """A provider job did not finish in time. Carries the provider ``request_id``."""
+
+    def __init__(self, message, *, request_id=None):
+        super().__init__(message)
+        self.request_id = str(request_id or "")
+
+
+def _request_id_from_http_error(exc, url):
+    headers = getattr(exc, "headers", None) or {}
+    for key in ("x-fal-request-id", "x-request-id", "request-id"):
+        try:
+            value = headers.get(key)
+        except Exception:
+            value = None
+        if value:
+            return str(value)
+    match = _REQUESTS_PATH.search(str(url or ""))
+    return match.group(1) if match else ""
 
 
 def require_env(name, provider):
@@ -115,7 +152,11 @@ def http_json(method, url, headers=None, payload=None, timeout_seconds=None):
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         message = compact_whitespace(body[:1200]) or str(exc)
-        raise RuntimeError(f"HTTP {exc.code} from {url}: {message}") from exc
+        raise ProviderJobError(
+            f"HTTP {exc.code} from {url}: {message}",
+            request_id=_request_id_from_http_error(exc, url),
+            status_code=exc.code,
+        ) from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Request failed for {url}: {exc.reason}") from exc
 
@@ -518,9 +559,15 @@ def fal_wait_for_result(
             )
             return {"status": last_status, "response": result}
         if normalized in ("failed", "canceled"):
-            raise RuntimeError(f"fal.ai generation {request_id} ended with status {last_status}.")
+            raise ProviderJobError(
+                f"fal.ai generation {request_id} ended with status {last_status}.",
+                request_id=request_id,
+            )
         time.sleep(max(0.5, interval))
-    raise TimeoutError(f"fal.ai generation {request_id} timed out. Last status: {last_status}")
+    raise ProviderJobTimeout(
+        f"fal.ai generation {request_id} timed out. Last status: {last_status}",
+        request_id=request_id,
+    )
 
 
 def extract_video_url(response):

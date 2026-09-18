@@ -125,6 +125,7 @@ def extract_request_id(
     """
 
     header_candidates = [
+        "x-fal-request-id",
         "x-request-id",
         "request-id",
         "openai-request-id",

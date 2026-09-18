@@ -128,7 +128,7 @@ def generate(lyrics, model="V5_5", **kwargs):
     request_id = _task_id_or_raise(data, "submit")
     provider_status = _provider_status_value(data)
     if _is_failed_status(provider_status):
-        raise RuntimeError(_failure_message("submit", data))
+        raise _failure_error(_failure_message("submit", data), request_id)
     return standard_generation(
         provider="kie",
         model=model,
@@ -160,7 +160,7 @@ def get_status(generation):
     status = _provider_status(response_data, "status")
     if _is_failed_status(status):
         generation["status"] = "failed"
-        raise RuntimeError(_failure_message("status", response_data))
+        raise _failure_error(_failure_message("status", response_data), generation.get("request_id"))
     if _is_success_status(status):
         generation["status"] = "completed"
         try:
@@ -188,7 +188,7 @@ def download_result(generation):
     status = _provider_status(response_data, "download")
     if _is_failed_status(status):
         generation["status"] = "failed"
-        raise RuntimeError(_failure_message("download", response_data))
+        raise _failure_error(_failure_message("download", response_data), generation.get("request_id"))
     if not _is_success_status(status):
         generation["status"] = "running"
         return generation
@@ -370,6 +370,13 @@ def _vocal_gender(gender):
     if value not in VOCAL_GENDER:
         raise ValueError("gender must be one of: male, female, both")
     return VOCAL_GENDER[value]
+
+
+def _failure_error(message, request_id):
+    """The same RuntimeError as always, carrying the Kie ``taskId`` as ``request_id``."""
+    error = RuntimeError(message)
+    error.request_id = str(request_id or "")
+    return error
 
 
 def _failure_message(stage, data):

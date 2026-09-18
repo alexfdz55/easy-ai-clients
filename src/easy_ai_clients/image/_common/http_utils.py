@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -100,12 +101,29 @@ def request(
             status_code=response.status_code,
             response_text=response.text,
             is_transient=_should_retry(response.status_code),
+            headers=dict(response.headers),
+            request_id=_failed_request_id(response, url),
         )
 
     raise ProviderResponseError(
         f"HTTP request exhausted retries for {url}: {last_error}",
         is_transient=True,
     )
+
+
+def _failed_request_id(response: Any, url: str) -> str:
+    """Id of a failed request: from the provider headers or, for fal queue URLs, the path."""
+
+    headers = getattr(response, "headers", {}) or {}
+    for key in ("x-fal-request-id", "x-request-id", "request-id"):
+        value = headers.get(key)
+        if value:
+            return str(value)
+    match = _REQUESTS_PATH.search(str(url or ""))
+    return match.group(1) if match else ""
+
+
+_REQUESTS_PATH = re.compile(r"/requests/([^/?#]+)")
 
 
 def download_bytes(

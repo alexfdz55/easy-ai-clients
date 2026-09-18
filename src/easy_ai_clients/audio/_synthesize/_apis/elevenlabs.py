@@ -236,8 +236,12 @@ def generate(
             )
         )
 
+    request_ids: list[str] = []
     for chunk in chunk_records:
         total_billed_characters += int(chunk.pop("character_cost", 0) or 0)
+        chunk_request_id = chunk.pop("request_id", "")
+        if chunk_request_id:
+            request_ids.append(str(chunk_request_id))
 
     cost_usd = round((total_billed_characters / 1_000_000.0) * model_config["usd_per_million_chars"], 6)
     result = _finalize_synthesis_output(
@@ -246,6 +250,10 @@ def generate(
     )
     if not documented_model:
         result["warnings"] = f"No documented pricing metadata is available for ElevenLabs model `{model}`."
+    if request_ids:
+        # One request per chunk: the first identifies the synthesis, all of them are kept.
+        result["request_id"] = request_ids[0]
+        result["request_ids"] = request_ids
     return result
 
 
@@ -516,7 +524,15 @@ def _generate_chunk(
         },
     )
     chunk_record["character_cost"] = _parse_character_cost(response_headers, fallback=len(chunk_text))
+    chunk_record["request_id"] = _response_request_id(response_headers)
     return [chunk_record]
+
+
+def _response_request_id(headers: Mapping[str, Any]) -> str:
+    """ElevenLabs reports the id of each synthesis request in the `request-id` header."""
+    if not isinstance(headers, Mapping):
+        return ""
+    return str(headers.get("request-id") or "").strip()
 
 
 def _parse_character_cost(headers: Mapping[str, Any], *, fallback: int) -> int:

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import time
 
+from ..._error_utils import request_id_of
 from ..._falai_pricing import fal_estimate_unit_price
 from .http_utils import request
 from .image_utils import image_to_data_url
@@ -235,6 +236,10 @@ def _run_image_job(
 ):
     """Executa o ciclo completo submit → poll → download para operações de imagem."""
 
+    # Declarados fuera del `try`: si algo falla después del submit, el id ya existe y el
+    # `except` lo tiene que devolver. Antes se perdía y el error quedaba sin id.
+    submit_request_id = ""
+    request_id = ""
     try:
         submit_response, submit_payload = _submit_queue(
             model=model,
@@ -300,7 +305,8 @@ def _run_image_job(
         )
     except Exception as exc:
         return build_result(
-            warnings=join_warnings(preprocess_warnings, provider_error_to_warning(exc))
+            warnings=join_warnings(preprocess_warnings, provider_error_to_warning(exc)),
+            request_id=request_id or submit_request_id or request_id_of(exc),
         )
 
 
@@ -503,6 +509,8 @@ def analyze_image(
         Dict no contrato normalizado de ``analyze``.
     """
 
+    submit_request_id = ""
+    request_id = ""
     try:
         image_data_url = image_to_data_url(prepared.image)
         body = {
@@ -562,6 +570,7 @@ def analyze_image(
         )
     except Exception as exc:
         return build_result(
+            request_id=request_id or submit_request_id or request_id_of(exc),
             input_text=prepared.prompt,
             output=provider_error_to_warning(exc),
         )
