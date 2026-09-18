@@ -3,6 +3,27 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.18.0 - 2026-09-18
+
+### Added
+
+- Failed calls keep the provider request id. `build_error` and `attach_error`
+  add `request_id` when it is known (explicitly, from the exception, or from
+  the result), and `request_id_of(exc)` reads it from a `request_id` attribute
+  or from response headers (`x-fal-request-id`, `x-request-id`, `request-id`)
+  walking the `__cause__` chain. Errors without an id keep their exact keys.
+- Video: `ProviderJobError` and `ProviderJobTimeout` (subclasses of
+  `RuntimeError` and `TimeoutError`, same messages as before) carry
+  `request_id` and `status_code`.
+- ElevenLabs TTS results expose `request_id` and `request_ids` (one per
+  chunk). Kie failures carry the `taskId` as `exc.request_id`.
+
+### Fixed
+
+- fal.ai image jobs that fail after the submit (an HTTP error on status or
+  response) now return the submit `request_id` instead of an empty string.
+  `ProviderResponseError` keeps the response headers and the request id.
+
 ## 0.17.0 - 2026-09-14
 
 ### Added
