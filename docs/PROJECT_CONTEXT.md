@@ -65,7 +65,7 @@ pip install -e ".[dev]"
 ```
 
 The package version is defined in both `pyproject.toml` and
-`src/easy_ai_clients/__init__.py`. Both currently show `0.18.0`.
+`src/easy_ai_clients/__init__.py`. Both currently show `0.19.0`.
 
 ## Repository Structure Summary
 

@@ -3,6 +3,14 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.0 - 2026-09-23
+
+### Added
+
+- OpenAI text prices for `gpt-6-luna` and `gpt-6-sol` (standard, batch and
+  flex). The table matches models by substring, so without them direct OpenAI
+  text calls to GPT-6 reported a cost of 0.
+
 ## 0.18.0 - 2026-09-18
 
 ### Added
