@@ -49,6 +49,29 @@ from ._shared import (
 )
 
 _PRECOS_MODELOS = {
+    # Preço oficial da OpenAI em 2026-09-23; batch e flex custam a metade.
+    "gpt-6-sol": {
+        "standard": {
+            "short": {"input": 2.0, "cached_input": 0.20, "output": 10.0},
+        },
+        "batch": {
+            "short": {"input": 1.0, "cached_input": 0.10, "output": 5.0},
+        },
+        "flex": {
+            "short": {"input": 1.0, "cached_input": 0.10, "output": 5.0},
+        },
+    },
+    "gpt-6-luna": {
+        "standard": {
+            "short": {"input": 0.10, "cached_input": 0.01, "output": 0.50},
+        },
+        "batch": {
+            "short": {"input": 0.05, "cached_input": 0.005, "output": 0.25},
+        },
+        "flex": {
+            "short": {"input": 0.05, "cached_input": 0.005, "output": 0.25},
+        },
+    },
     "gpt-5.4-pro": {
         "standard": {
             "short": {"input": 30.0, "output": 180.0},
