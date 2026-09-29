@@ -3,6 +3,15 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Eight music style presets for narrative songs: `ballad`, `singer_songwriter`,
+  `corrido`, `dark_folk`, `bachata`, `musical_theatre`, `cinematic_epic` and
+  `lullaby`. Same shape and limits as the other presets; the catalog goes from
+  30 to 38 styles.
+
 ## 0.20.0 - 2026-09-29
 
 ### Added

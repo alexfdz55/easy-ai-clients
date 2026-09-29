@@ -13,6 +13,25 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                                      'notes, steady pitch, focused resonance, and measured vibrato '
                                      'that blooms only after each held tone is stable through the '
                                      'release.'},
+ 'bachata': {'default_gender': 'male',
+             'female': 'Female bachata lead sings sweet and aching in a light, bright register, '
+                       'like a love letter sung out loud. Stretch the ends of lines with feeling, '
+                       'add small sobs of emotion in the chorus without losing pitch, and keep '
+                       'every word clear over the requinto and the guira.',
+             'male': 'Male bachata lead sings sweet and aching in a light, high register, like a '
+                     'love letter sung out loud. Stretch the ends of lines with feeling, add small '
+                     'sobs of emotion in the chorus without losing pitch, and keep every word '
+                     'clear over the requinto and the guira.'},
+ 'ballad': {'default_gender': 'female',
+            'female': 'Female ballad lead starts close to the microphone with a tender, '
+                      'conversational tone, keeps every word of the story clear, and lets the '
+                      'pre-chorus lift gradually. In the chorus, open the sound into a full, '
+                      'controlled belt with steady pitch, and save the biggest note for the final '
+                      'key change.',
+            'male': 'Male ballad lead starts close to the microphone with a tender, conversational '
+                    'tone, keeps every word of the story clear, and lets the pre-chorus lift '
+                    'gradually. In the chorus, open the sound into a full, controlled belt with '
+                    'steady pitch, and save the biggest note for the final key change.'},
  'bluegrass_old_time': {'default_gender': 'female',
                         'female': 'Airy female lead vocal in the upper register, built on floated '
                                   'head voice, soft controlled onset, and low airflow pressure. '
@@ -79,6 +98,17 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                    'short phrases that stay easy to repeat. Use clean attacks, crisp consonant '
                    'taps, tiny skips, quick turns, clipped endings, and clear breath resets, '
                    'circling a compact hook contour with light precision across each repetition.'},
+ 'cinematic_epic': {'default_gender': 'male',
+                    'female': 'Female epic lead starts dark and restrained over the string '
+                              'ostinato, like a narrator before the battle, then rises into a '
+                              'powerful, heroic sound that carries over the orchestra and the '
+                              'drums. Keep the words clear even at full power, and hold the last '
+                              'note of the finale with strength and stability.',
+                    'male': 'Male epic lead starts grave and restrained over the string ostinato, '
+                            'like a narrator before the battle, then rises into a powerful, heroic '
+                            'sound that carries over the orchestra and the drums. Keep the words '
+                            'clear even at full power, and hold the last note of the finale with '
+                            'strength and stability.'},
  'classical_contemporary_art_music': {'default_gender': 'female',
                                       'female': 'A sustained female ensemble surrounds the main '
                                                 'phrase with smooth support, long held tones, and '
@@ -94,6 +124,15 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                                               'moving gently under the lead so the choir remains '
                                               'blended and stable while the phrase stays '
                                               'centered.'},
+ 'corrido': {'default_gender': 'male',
+             'female': 'Female corrido narrator tells the story plainly and proudly, like a '
+                       'chronicle sung in the town square. Keep each line locked to the two-step '
+                       'beat, let names, places and dates ring clearly over the accordion, and add '
+                       'a slight lift of emotion only in the climax and the farewell verse.',
+             'male': 'Male corrido narrator tells the story plainly and proudly, like a chronicle '
+                     'sung in the town square. Keep each line locked to the two-step beat, let '
+                     'names, places and dates ring clearly over the accordion, and add a slight '
+                     'lift of emotion only in the climax and the farewell verse.'},
  'country_americana': {'default_gender': 'male',
                        'female': 'Female narrative lead delivers the text first, shaping each line '
                                  'with clear spoken narrative phrasing, precise consonants, and '
@@ -105,6 +144,15 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                                'Use a centered, legible line with restrained vibrato and minimal '
                                'ornament, while close supporting voices touch selected words, tail '
                                'endings, and gentle pivots as the lead keeps focus.'},
+ 'dark_folk': {'default_gender': 'male',
+               'female': 'Female dark folk lead stays low and restrained, almost whispered in the '
+                         'verses, with a dark, steady tone and no ornaments. Let the refrain sound '
+                         'like an old warning passed down for generations, keep the melody simple '
+                         'and modal, and let the last line fade into the drone.',
+               'male': 'Male dark folk lead stays low and restrained, almost whispered in the '
+                       'verses, with a grave, steady tone and no ornaments. Let the refrain sound '
+                       'like an old warning passed down for generations, keep the melody simple '
+                       'and modal, and let the last line fade into the drone.'},
  'edm': {'default_gender': 'female',
          'female': 'Female rhythm-first topline stays sparse, using brief sung pieces, clean '
                    'rests, and compact syllable patterns. Add small melodic turns, light voiced '
@@ -231,6 +279,15 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                   'long connected arcs. Smooth each register move, keep tone calm and centered, '
                   'sustain the melodic line through even airflow, and let gentle end-phrase '
                   'vibrato bloom only after the vowel has settled into the phrase.'},
+ 'lullaby': {'default_gender': 'female',
+             'female': 'Female lullaby lead sings very softly and slowly, close and warm, as if '
+                       'singing a child to sleep. Keep the melody simple and repetitive, avoid any '
+                       'strong accents or high notes, let line endings soften into a hum, and grow '
+                       'quieter with every refrain until the last line almost disappears.',
+             'male': 'Male lullaby lead sings very softly and slowly, close and warm, as if '
+                     'singing a child to sleep. Keep the melody simple and repetitive, avoid any '
+                     'strong accents or high notes, let line endings soften into a hum, and grow '
+                     'quieter with every refrain until the last line almost disappears.'},
  'mpb': {'default_gender': 'female',
          'female': 'Female text-led voice keeps the lyric in front with conversational timing, '
                    'restrained projection, and pauses that let each phrase breathe. Let timing '
@@ -240,6 +297,17 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                  'shaped-speech, restrained projection, and flexible timing that can lean forward '
                  'or wait in silence. Keep consonants present, vowels unforced, and vibrato '
                  'sparse, saved for selected held syllables or text-driven turns.'},
+ 'musical_theatre': {'default_gender': 'female',
+                     'female': 'Female musical theatre lead acts the lyric like a scene on stage, '
+                               'moving from spoken-sung verses to a full, ringing belt in the '
+                               'chorus. Keep every consonant crisp so the story reads to the back '
+                               "row, color each line with the character's intention, and hold the "
+                               'final note long and steady.',
+                     'male': 'Male musical theatre lead acts the lyric like a scene on stage, '
+                             'moving from spoken-sung verses to a full, ringing belt in the '
+                             'chorus. Keep every consonant crisp so the story reads to the back '
+                             "row, color each line with the character's intention, and hold the "
+                             'final note long and steady.'},
  'pop': {'default_gender': 'male',
          'female': 'Female melodic lead stays polished and clearly above close supporting '
                    'harmonies that shadow and reinforce the main line. Use smooth sustained notes, '
@@ -315,6 +383,16 @@ VOICE_PRESETS = {'axe_bahian_carnival_pop': {'default_gender': 'female',
                        'other. Give each voice a distinct color, one more grounded and one '
                        'slightly brighter, with precise diction, clean pitch entries, balanced '
                        'intensity, and crisp handoffs between lines.'},
+ 'singer_songwriter': {'default_gender': 'male',
+                       'female': 'Female songwriter lead sings close and unforced, with relaxed, '
+                                 'speech-like phrasing that lets the lyric lead the melody. Keep '
+                                 'the tone honest and warm, use small natural dynamics instead of '
+                                 'big peaks, and leave short pauses after the key lines of the '
+                                 'story.',
+                       'male': 'Male songwriter lead sings close and unforced, with relaxed, '
+                               'speech-like phrasing that lets the lyric lead the melody. Keep the '
+                               'tone honest and warm, use small natural dynamics instead of big '
+                               'peaks, and leave short pauses after the key lines of the story.'},
  'uk_bass_music': {'default_gender': 'male',
                    'female': 'Female narrative spoken vocal centered on the text, with crisp '
                              'diction, controlled breath, and purposeful pauses between thoughts. '

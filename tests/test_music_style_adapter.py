@@ -91,7 +91,7 @@ def test_list_styles_returns_exact_file_stems():
     stems = sorted(path.stem for path in STYLE_DIR.glob("*.py") if path.name != "__init__.py")
 
     assert style_adapter.list_styles() == stems
-    assert len(stems) == 30
+    assert len(stems) == 38
 
 
 def test_resolve_style_uses_exact_matching():
@@ -327,7 +327,7 @@ def test_invalid_gender_is_rejected():
 def test_get_style_presets_returns_full_deep_copied_presets():
     presets = style_adapter.get_style_presets()
 
-    assert len(presets) == 30
+    assert len(presets) == 38
     assert "sertanejo" in presets
     assert "description" in presets["sertanejo"]
 
@@ -400,9 +400,9 @@ def test_get_style_presets_reports_invalid_parameter_types():
 def test_style_package_has_expected_files():
     files = sorted(path.name for path in STYLE_DIR.glob("*.py"))
 
-    assert len(files) == 31
+    assert len(files) == 39
     assert "__init__.py" in files
-    assert len([name for name in files if name != "__init__.py"]) == 30
+    assert len([name for name in files if name != "__init__.py"]) == 38
 
 
 def test_all_style_modules_import_and_expose_valid_presets():
