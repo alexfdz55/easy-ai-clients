@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from easy_ai_clients.music._common import standard_generation
@@ -310,3 +312,248 @@ def test_failures_carry_the_kie_task_id(kie_module, monkeypatch):
         with pytest.raises(RuntimeError, match="generate_audio_failed") as caught:
             call(generation)
         assert caught.value.request_id == "task-1"
+
+
+# ── V6 por la API de tareas (spec 041 de Jaymaker, tanda 1b) ────────────────────────────
+
+
+def _jobs_record(state="success", credits=12, tracks=None):
+    """GET /jobs/recordInfo como lo devolvió Kie el 2026-09-28: resultJson es texto."""
+    tracks = tracks if tracks is not None else [
+        {"id": "audio-a", "audio_url": "https://cdn.example/v6-a.mp3", "duration": 29.96},
+        {"id": "audio-b", "audio_url": "https://cdn.example/v6-b.mp3", "duration": 30.0},
+    ]
+    result = {"code": 200, "msg": "success", "task_id": "task-v6", "data": tracks}
+    return {
+        "code": 200,
+        "data": {
+            "taskId": "task-v6",
+            "state": state,
+            "resultJson": json.dumps(result) if state == "success" else "",
+            "failCode": "" if state != "fail" else "500",
+            "failMsg": "" if state != "fail" else "Internal Error",
+            "creditsConsumed": credits,
+        },
+    }
+
+
+def _no_network(*args, **kwargs):
+    raise AssertionError("network")
+
+
+def test_v6_sends_the_jobs_payload_with_real_duration(kie_module, monkeypatch):
+    captured = {}
+
+    def fake_request_json(method, url, headers=None, json_payload=None, params=None, timeout=None):
+        captured.update(method=method, url=url, payload=json_payload)
+        return {"code": 200, "data": {"taskId": "task-v6"}}
+
+    monkeypatch.setattr(kie_module, "request_json", fake_request_json)
+    generation = kie_module.generate(
+        TEST_LYRICS,
+        model="V6",
+        prompt=STYLE_TAGS,
+        duration=30,
+        gender="female",
+        title="Morning Light",
+        negative_tags=["long intro"],
+    )
+
+    payload = captured["payload"]
+    assert captured["url"] == kie_module.JOBS_CREATE_ENDPOINT
+    assert payload["model"] == "ai-music-api/generate"
+    assert "callBackUrl" not in payload
+    task_input = payload["input"]
+    assert task_input["model"] == "V6"
+    assert task_input["lyrics"] == TEST_LYRICS
+    assert "prompt" not in task_input
+    assert task_input["style"] == STYLE_TAGS  # sin la pista de duración de V5_5
+    assert task_input["duration"] == 30
+    assert task_input["custom_mode"] is True and task_input["instrumental"] is False
+    assert task_input["vocal_gender"] == "f"
+    assert task_input["negative_tags"] == "long intro"
+    assert "persona_id" not in task_input
+    assert generation["model"] == "V6"
+    assert generation["request_id"] == "task-v6"
+    assert generation["cost_details"]["duration_seconds"] == 30
+
+
+def test_v6_sends_the_persona(kie_module, monkeypatch):
+    captured = {}
+
+    def fake_request_json(method, url, **kwargs):
+        captured["payload"] = kwargs["json_payload"]
+        return {"code": 200, "data": {"taskId": "task-v6"}}
+
+    monkeypatch.setattr(kie_module, "request_json", fake_request_json)
+    generation = kie_module.generate(
+        TEST_LYRICS, model="V6", prompt=STYLE_TAGS, persona_id="p-123", persona_model="voice_persona"
+    )
+    assert captured["payload"]["input"]["persona_id"] == "p-123"
+    assert captured["payload"]["input"]["persona_model"] == "voice_persona"
+    assert generation["cost_details"]["persona_model"] == "voice_persona"
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"persona_id": "p-1"}, "persona_model"),
+        ({"persona_id": "p-1", "persona_model": "voice"}, "persona_model"),
+        ({"persona_id": " ", "persona_model": "voice_persona"}, "persona_id"),
+    ],
+)
+def test_v6_rejects_an_incomplete_persona(kie_module, monkeypatch, kwargs, match):
+    monkeypatch.setattr(kie_module, "request_json", _no_network)
+    with pytest.raises(ValueError, match=match):
+        kie_module.generate(TEST_LYRICS, model="V6", prompt=STYLE_TAGS, **kwargs)
+
+
+def test_v5_5_refuses_a_persona(kie_module, monkeypatch):
+    monkeypatch.setattr(kie_module, "request_json", _no_network)
+    with pytest.raises(ValueError, match="V6"):
+        kie_module.generate(TEST_LYRICS, prompt=STYLE_TAGS, persona_id="p-1", persona_model="voice_persona")
+
+
+@pytest.mark.parametrize("state", ["waiting", "queuing", "generating"])
+def test_v6_status_stays_running(kie_module, monkeypatch, state):
+    monkeypatch.setattr(kie_module, "request_json", lambda *a, **k: _jobs_record(state=state))
+    generation = standard_generation("kie", "V6", "task-v6")
+    assert kie_module.get_status(generation)["status"] == "running"
+
+
+def test_v6_status_success_reads_takes_and_real_cost(kie_module, monkeypatch):
+    calls = []
+
+    def fake_request_json(method, url, **kwargs):
+        calls.append((method, url, kwargs.get("params")))
+        return _jobs_record()
+
+    monkeypatch.setattr(kie_module, "request_json", fake_request_json)
+    generation = standard_generation("kie", "V6", "task-v6")
+    result = kie_module.get_status(generation)
+
+    assert calls == [("GET", kie_module.JOBS_STATUS_ENDPOINT, {"taskId": "task-v6"})]
+    assert result["status"] == "completed"
+    assert result["metadata"]["take_count"] == 2
+    assert result["metadata"]["alternate_audio_url"] == "https://cdn.example/v6-b.mp3"
+    assert result["metadata"]["take_audio_ids"] == ["audio-a", "audio-b"]
+    assert result["cost_usd"] == pytest.approx(0.06)
+    assert result["cost_is_estimated"] is False
+    assert result["cost_source"] == "kie_credits_consumed"
+
+
+def test_v6_failure_leads_with_kie_reason_and_task_id(kie_module, monkeypatch):
+    monkeypatch.setattr(kie_module, "request_json", lambda *a, **k: _jobs_record(state="fail"))
+    for call in (kie_module.get_status, kie_module.download_result):
+        generation = standard_generation("kie", "V6", "task-v6")
+        with pytest.raises(RuntimeError, match=r"state fail \(code 500: Internal Error\)") as caught:
+            call(generation)
+        assert caught.value.request_id == "task-v6"
+        assert generation["status"] == "failed"
+
+
+def test_v6_download_uses_the_first_take(kie_module, monkeypatch):
+    downloaded = []
+
+    def fake_download(generation, provider, audio_url, extension="mp3"):
+        downloaded.append(audio_url)
+        generation["output_path"] = "outputs/music/temp/kie/v6.mp3"
+        generation["status"] = "completed"
+        return generation
+
+    monkeypatch.setattr(kie_module, "request_json", lambda *a, **k: _jobs_record())
+    monkeypatch.setattr(kie_module, "download_generation_audio", fake_download)
+    result = kie_module.download_result(standard_generation("kie", "V6", "task-v6"))
+
+    assert downloaded == ["https://cdn.example/v6-a.mp3"]
+    assert result["metadata"]["alternate_audio_url"] == "https://cdn.example/v6-b.mp3"
+    assert result["metadata"]["take_durations"] == [29.96, 30.0]
+
+
+def test_v6_download_without_tracks_fails_loudly(kie_module, monkeypatch):
+    monkeypatch.setattr(kie_module, "request_json", lambda *a, **k: _jobs_record(tracks=[]))
+    generation = standard_generation("kie", "V6", "task-v6")
+    with pytest.raises(RuntimeError, match="did not include audio URLs"):
+        kie_module.download_result(generation)
+    assert generation["status"] == "failed"
+
+
+def test_public_router_keeps_the_v6_second_take(kie_module, monkeypatch):
+    from easy_ai_clients import music
+
+    def fake_download(generation, provider, audio_url, extension="mp3"):
+        generation["output_path"] = "outputs/music/temp/kie/v6.mp3"
+        generation["status"] = "completed"
+        return generation
+
+    monkeypatch.setattr(kie_module, "request_json", lambda *a, **k: _jobs_record())
+    monkeypatch.setattr(kie_module, "download_generation_audio", fake_download)
+    public = music.download_result(standard_generation("kie", "V6", "task-v6"), api="kie")
+    assert public["metadata"]["alternate_audio_url"] == "https://cdn.example/v6-b.mp3"
+    assert public["metadata"]["take_audio_ids"] == ["audio-a", "audio-b"]
+
+
+def test_create_persona_returns_the_immediate_id(kie_module, monkeypatch):
+    captured = {}
+
+    def fake_request_json(method, url, **kwargs):
+        captured.update(url=url, payload=kwargs["json_payload"])
+        return {"code": 200, "data": {"persona_id": "p-9", "name": "Voz A", "description": "pop"}}
+
+    monkeypatch.setattr(kie_module, "request_json", fake_request_json)
+    result = kie_module.create_persona(
+        task_id="task-v6", audio_id="audio-a", name="Voz A", description="pop", vocal_start=3, vocal_end=28
+    )
+    assert captured["url"] == kie_module.JOBS_CREATE_ENDPOINT
+    assert captured["payload"]["model"] == "ai-music-api/generate-persona"
+    assert captured["payload"]["input"] == {
+        "task_id": "task-v6",
+        "audio_id": "audio-a",
+        "name": "Voz A",
+        "description": "pop",
+        "vocal_start": 3.0,
+        "vocal_end": 28.0,
+    }
+    assert result["persona_id"] == "p-9"
+
+
+def test_create_persona_waits_for_the_task(kie_module, monkeypatch):
+    answers = iter(
+        [
+            {"code": 200, "data": {"taskId": "persona-task"}},
+            {"code": 200, "data": {"taskId": "persona-task", "state": "generating"}},
+            {
+                "code": 200,
+                "data": {
+                    "taskId": "persona-task",
+                    "state": "success",
+                    "resultJson": json.dumps({"resultObject": {"persona_id": "p-10"}}),
+                },
+            },
+        ]
+    )
+    monkeypatch.setattr(kie_module, "request_json", lambda *a, **k: next(answers))
+    monkeypatch.setattr(kie_module.time, "sleep", lambda seconds: None)
+    result = kie_module.create_persona(task_id="t", audio_id="a", name="Voz B", description="balada")
+    assert result == {"persona_id": "p-10", "request_id": "persona-task", "name": "Voz B", "description": "balada"}
+
+
+@pytest.mark.parametrize(("start", "end"), [(0, 9), (0, 31), (-1, 20)])
+def test_create_persona_checks_the_window(kie_module, monkeypatch, start, end):
+    monkeypatch.setattr(kie_module, "request_json", _no_network)
+    with pytest.raises(ValueError, match="vocal window"):
+        kie_module.create_persona(
+            task_id="t", audio_id="a", name="n", description="d", vocal_start=start, vocal_end=end
+        )
+
+
+def test_music_create_persona_only_for_kie(kie_module, monkeypatch):
+    from easy_ai_clients import music
+
+    monkeypatch.setattr(
+        kie_module, "request_json", lambda *a, **k: {"code": 200, "data": {"persona_id": "p-1"}}
+    )
+    result = music.create_persona(api="kie", task_id="t", audio_id="a", name="n", description="d")
+    assert result["persona_id"] == "p-1"
+    with pytest.raises(ValueError, match="does not support personas"):
+        music.create_persona(api="elevenlabs", task_id="t", audio_id="a", name="n", description="d")

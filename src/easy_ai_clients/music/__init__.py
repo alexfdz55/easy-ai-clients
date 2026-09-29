@@ -5,6 +5,9 @@ from ._generation_options import get_generation_options as _get_generation_optio
 from ._lyrics_prompt import build_lyrics_prompt as _build_lyrics_prompt
 from ._model_registry import PROVIDERS as _PROVIDERS
 from ._router import (
+    create_persona as _create_persona,
+)
+from ._router import (
     download_result as _download_result,
 )
 from ._router import (
@@ -19,6 +22,7 @@ __all__ = [
     "MusicInputLimitError",
     "available_apis",
     "build_lyrics_prompt",
+    "create_persona",
     "download_result",
     "generate",
     "get_generation_options",
@@ -43,7 +47,8 @@ def generate(lyrics, model=None, *, api, style=None, prompt=None, **kwargs):
             - `"deapi"`: deAPI ACE-Step music generation.
             - `"elevenlabs"`: ElevenLabs Music.
             - `"google"`: Google Lyria.
-            - `"kie"`: Kie.ai Suno V5.5.
+            - `"kie"`: Kie.ai Suno V5.5 or V6 (V6 honors `duration` and
+              accepts `persona_id` with `persona_model`).
             - `"runware"`: Runware ACE-Step.
         style: Optional. Exact predefined style name. Use `None` for no preset.
         prompt: Optional. Music prompt. Required when `style` is `None`.
@@ -61,6 +66,23 @@ def generate(lyrics, model=None, *, api, style=None, prompt=None, **kwargs):
         prompt=prompt,
         **kwargs,
     )
+
+
+def create_persona(*, api, **kwargs):
+    """Create a reusable voice persona from a completed generation.
+
+    Args:
+        api: Required. Provider key. Only `"kie"` supports personas.
+        **kwargs: Provider arguments. For `"kie"`: `task_id`, `audio_id`,
+            `name`, `description`, and optionally `vocal_start`, `vocal_end`
+            (a 10–30 s window), `style`, `timeout_seconds` and
+            `poll_interval_seconds`.
+
+    Returns:
+        A dictionary with `persona_id`, `request_id`, `name` and
+        `description`.
+    """
+    return _create_persona(api=api, **kwargs)
 
 
 def get_status(generation, *, api=None):

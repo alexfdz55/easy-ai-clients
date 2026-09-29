@@ -190,6 +190,27 @@ def download_result(generation, *, api=None):
     return public
 
 
+def create_persona(*, api, **kwargs):
+    """Create a reusable voice persona through a provider that supports it.
+
+    Args:
+        api: Required. Provider key. Only `"kie"` supports personas.
+        **kwargs: Provider arguments (see `kie.create_persona`).
+
+    Returns:
+        The provider result with at least `persona_id`.
+
+    Raises:
+        ValueError: If the provider does not support personas.
+    """
+    _validate_api(api, "create_persona")
+    module = _load_api(api)
+    creator = getattr(module, "create_persona", None)
+    if creator is None:
+        raise ValueError(f"music API '{api}' does not support personas")
+    return creator(**kwargs)
+
+
 def _reject_removed_public_kwargs(kwargs):
     blocked = sorted(set(kwargs) & REMOVED_PUBLIC_KWARGS)
     if blocked:

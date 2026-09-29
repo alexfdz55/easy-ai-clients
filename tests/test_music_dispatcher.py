@@ -107,6 +107,7 @@ def test_public_exports_are_exact():
         "MusicInputLimitError",
         "available_apis",
         "build_lyrics_prompt",
+        "create_persona",
         "download_result",
         "generate",
         "get_generation_options",

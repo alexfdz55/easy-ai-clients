@@ -46,7 +46,7 @@ def test_active_provider_and_model_matrix_is_explicit():
     assert set(deapi.MODELS) == {"AceStep_1_5_Turbo", "AceStep_1_5_XL_Turbo_INT8"}
     assert set(elevenlabs.MODELS) == {"music_v2"}
     assert set(google.MODELS) == {"lyria-3-clip-preview", "lyria-3-pro-preview"}
-    assert set(kie.MODELS) == {"V5_5"}
+    assert set(kie.MODELS) == {"V5_5", "V6"}
     assert set(runware.MODELS) == {
         "runware:ace-step@v1.5-turbo",
         "runware:ace-step@v1.5-xl-base",

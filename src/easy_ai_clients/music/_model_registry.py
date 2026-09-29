@@ -25,6 +25,8 @@ MODEL_ALIASES = {
     "kie": {
         "suno_v5_5": "V5_5",
         "V5_5": "V5_5",
+        "suno_v6": "V6",
+        "V6": "V6",
     },
     "runware": {
         "ace_step_v1_5_turbo": "runware:ace-step@v1.5-turbo",
