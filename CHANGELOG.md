@@ -3,6 +3,21 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.20.0 - 2026-09-29
+
+### Added
+
+- Kie Suno `V6` (`suno_v6`) through Kie's jobs endpoint
+  (`/api/v1/jobs/createTask` and `/api/v1/jobs/recordInfo`, snake_case input).
+  `duration` is a real parameter on V6 (measured: 30 s requested gave
+  28.8–30.4 s). The takes are read from `resultJson`; `metadata` adds
+  `take_audio_ids` and `take_durations`, and the cost comes from the task's
+  `creditsConsumed` (`cost_source: kie_credits_consumed`).
+- Personas: `music.create_persona(api="kie", ...)` creates a persona from one
+  take (free on Kie), and V6 generations accept `persona_id` with
+  `persona_model` (`voice_persona` or `style_persona`) to keep the same voice.
+  V5_5 rejects personas with `ValueError`.
+
 ## 0.19.0 - 2026-09-23
 
 ### Added
