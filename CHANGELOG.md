@@ -3,6 +3,20 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.3 - 2026-10-02
+
+### Added
+
+- HeyGen Video 1 (`heygen/heygen-video-1`) on the OpenRouter video route: 5 to 15
+  seconds, 480p or 768p, first frame. Its card declares no `generate_audio` and no
+  passthrough parameters, and OpenRouter answers 400 to a parameter the model does not
+  support, so its payload carries only what the model declares. A documented model can
+  now say `accepts_generate_audio` and `passthrough_parameters`; the Seedance models
+  keep sending everything, as before.
+- `clamp_duration` on the OpenRouter video route. Opt-in: the duration is rounded up to a
+  whole second and brought inside the model's documented range, instead of truncated and
+  rejected. For callers that ask for the length of a scene rather than a provider duration.
+
 ## 0.19.2 - 2026-10-02
 
 ### Fixed
