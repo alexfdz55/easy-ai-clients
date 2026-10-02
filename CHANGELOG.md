@@ -26,6 +26,10 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   language (`Italian lyrics`, `Polish vocals`) and ACE-Step models receive
   `it`, `pl` or `nl` as `vocal_language`. Before, a caller had to omit the
   language for those songs and the prompt named the preset's default one.
+- Everything released as 0.19.1 to 0.19.4, which 0.20.0 did not include because
+  the two lines of work were released from different branches: Eleven v4 and
+  fal.ai speech with the failure reason, the speech cost and language fixes,
+  HeyGen Video 1 through OpenRouter and `clamp_duration`.
 
 ### Fixed
 
@@ -47,6 +51,74 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   take (free on Kie), and V6 generations accept `persona_id` with
   `persona_model` (`voice_persona` or `style_persona`) to keep the same voice.
   V5_5 rejects personas with `ValueError`.
+
+## 0.19.4 - 2026-10-02
+
+### Fixed
+
+- Speech no longer invents English. `audio.generate` defaulted `language_code` to
+  `"en"`, and ElevenLabs and fal.ai forwarded it. The field enforces a language for the
+  model and for text normalization: Eleven v4 Turbo read the digits of a Portuguese
+  script in English ("Em 1959" as "nineteen fifty-nine"). Multilingual v2 ignores the
+  field, so it had gone unnoticed. Now no language is sent unless the caller names one,
+  and the model detects it from the text. The other speech providers keep their own
+  default.
+
+## 0.19.3 - 2026-10-02
+
+### Added
+
+- HeyGen Video 1 (`heygen/heygen-video-1`) on the OpenRouter video route: 5 to 15
+  seconds, 480p or 768p, first frame. Its card declares no `generate_audio` and no
+  passthrough parameters, and OpenRouter answers 400 to a parameter the model does not
+  support, so its payload carries only what the model declares. A documented model can
+  now say `accepts_generate_audio` and `passthrough_parameters`; the Seedance models
+  keep sending everything, as before.
+- `clamp_duration` on the OpenRouter video route. Opt-in: the duration is rounded up to a
+  whole second and brought inside the model's documented range, instead of truncated and
+  rejected. For callers that ask for the length of a scene rather than a provider duration.
+
+## 0.19.2 - 2026-10-02
+
+### Fixed
+
+- ElevenLabs TTS cost. It was computed from the `character-cost` response header as if it
+  were a character count. The header is the cost in account credits, and a credit is one
+  character only on the older models: an Eleven v4 Turbo narration of 760 characters
+  reports 51 credits, so its cost came out as 0.002 USD instead of 0.03 at list price.
+  The cost is now the characters of the text times the list price; `cost_details`
+  carries `characters` and `provider_credits`. The Flash and Turbo v2 families were
+  under-reported the same way (half a credit per character).
+
+## 0.19.1 - 2026-10-02
+
+Released from `main`. It does not include `0.20.0` (Suno V6 on Kie), which lives on
+its own branch.
+
+### Added
+
+- ElevenLabs TTS models `eleven_v4` and `eleven_v4_turbo`, with their
+  per-request limit and list price. They used to run as unknown models: cost 0
+  and a warning.
+- `audio.generate(api="falai")`: ElevenLabs voices through fal.ai's queue, with
+  character timings turned into the same `words` as the direct adapter. It takes
+  ElevenLabs voice ids, so the same model and voice can be asked through a
+  second account.
+- Failed calls say why. `build_error` adds `http_status`, `provider_code`,
+  `provider_message` and `category` when the failure was an HTTP response,
+  reading them from the `__cause__` chain (`http_failure_of`). `category` is
+  `"account"` for 401, 402 and 403: the provider is turning the account away,
+  not the request. Errors without an HTTP response keep their exact keys.
+
+### Fixed
+
+- A failed ElevenLabs speech chunk lost the HTTP status and the provider's body
+  behind `Failed to synthesize ElevenLabs chunk N`: an unpaid invoice (401
+  `payment_issue`) was indistinguishable from any other failure. The message
+  now ends with the cause.
+- ElevenLabs TTS list prices: 0.08 USD per 1,000 characters for
+  `eleven_multilingual_v2` and `eleven_v3` (was 0.10) and 0.04 for the Flash
+  and Turbo v2 families (was 0.05).
 
 ## 0.19.0 - 2026-09-23
 

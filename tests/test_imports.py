@@ -124,7 +124,7 @@ def test_video_dispatchers_callable():
             "together", "xai",
         )),
         ("audio", "_synthesize._apis", (
-            "deepgram", "deepinfra", "elevenlabs", "google", "groq", "heygen",
+            "deepgram", "deepinfra", "elevenlabs", "falai", "google", "groq", "heygen",
             "mistral", "openai", "openrouter", "runway", "stability", "together",
             "xai",
         )),

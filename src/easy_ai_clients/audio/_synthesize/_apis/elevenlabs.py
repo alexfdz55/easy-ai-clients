@@ -39,14 +39,24 @@ CATALOG_URL = "https://elevenlabs.io/docs/api-reference/models/get-all"
 PRICING_URL = "https://elevenlabs.io/pricing/api/"
 
 DOCUMENTED_MODEL_METADATA = {
+    "eleven_v4": {
+        "char_limit": 5000,
+        "usd_per_million_chars": 80.0,
+        "supports_language_code": True,
+    },
+    "eleven_v4_turbo": {
+        "char_limit": 5000,
+        "usd_per_million_chars": 40.0,
+        "supports_language_code": True,
+    },
     "eleven_v3": {
         "char_limit": 5000,
-        "usd_per_million_chars": 100.0,
+        "usd_per_million_chars": 80.0,
         "supports_language_code": True,
     },
     "eleven_multilingual_v2": {
         "char_limit": 10000,
-        "usd_per_million_chars": 100.0,
+        "usd_per_million_chars": 80.0,
         "supports_language_code": True,
     },
     "eleven_multilingual_v1": {
@@ -56,22 +66,22 @@ DOCUMENTED_MODEL_METADATA = {
     },
     "eleven_flash_v2_5": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": True,
     },
     "eleven_flash_v2": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": False,
     },
     "eleven_turbo_v2_5": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": True,
     },
     "eleven_turbo_v2": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": False,
     },
     "eleven_monolingual_v1": {
@@ -138,7 +148,7 @@ def generate(
     text: str,
     model: str = "eleven_flash_v2_5",
     voice: str = DEFAULT_VOICE,
-    language_code: str = "en",
+    language_code: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Generate speech with ElevenLabs TTS. See `synthesize/docs/elevenlabs.md`."""
@@ -178,11 +188,18 @@ def generate(
     seed = options.pop("seed", 4_294_967_295)
     if seed is not None:
         seed = int(validate_number_range(seed, parameter_name="seed", provider="ElevenLabs", model=model, minimum=0, maximum=4_294_967_295))
-    language_code = normalize_language_code(language_code)
-
     api_key = ensure_env_var("ELEVENLABS_API_KEY")
     chunk_limit = compute_operational_char_limit(model_config["char_limit"])
-    resolved_language = resolve_language_code(language_code)
+    # No language is sent unless the caller names one. `language_code` ENFORCES a language
+    # for the model and for text normalization: a default of "en" made Eleven v4 Turbo read
+    # the digits of a Portuguese script in English ("Em 1959" -> "nineteen fifty-nine").
+    # Without it the model detects the language from the text, as Multilingual v2 always
+    # did (that model ignores the field, which is why the default went unnoticed).
+    resolved_language = (
+        resolve_language_code(normalize_language_code(language_code))
+        if str(language_code or "").strip()
+        else None
+    )
     text_chunks = chunk_text_for_provider(text, chunk_limit)
 
     voice_settings = {
@@ -193,7 +210,7 @@ def generate(
         "speed": speed,
     }
 
-    total_billed_characters = 0
+    provider_credits = 0
     chunk_records: list[dict[str, Any]] = []
     for chunk_index, chunk_text in enumerate(text_chunks):
         chunk_records.extend(
@@ -238,16 +255,22 @@ def generate(
 
     request_ids: list[str] = []
     for chunk in chunk_records:
-        total_billed_characters += int(chunk.pop("character_cost", 0) or 0)
+        provider_credits += int(chunk.pop("character_cost", 0) or 0)
         chunk_request_id = chunk.pop("request_id", "")
         if chunk_request_id:
             request_ids.append(str(chunk_request_id))
 
-    cost_usd = round((total_billed_characters / 1_000_000.0) * model_config["usd_per_million_chars"], 6)
+    # The price list charges per character of text. The `character-cost` header is NOT a
+    # character count: it is what the request cost in account credits, and a credit is one
+    # character only on the older models (51 credits for 760 characters on Eleven v4 Turbo).
+    # Pricing those credits as characters reported a fraction of the real cost.
+    characters = sum(len(chunk_text) for chunk_text in text_chunks)
+    cost_usd = round((characters / 1_000_000.0) * model_config["usd_per_million_chars"], 6)
     result = _finalize_synthesis_output(
         chunk_records,
         cost_usd=cost_usd if documented_model else 0.0,
     )
+    result["cost_details"] = {"characters": characters, "provider_credits": provider_credits}
     if not documented_model:
         result["warnings"] = f"No documented pricing metadata is available for ElevenLabs model `{model}`."
     if request_ids:
@@ -342,7 +365,7 @@ def _request_tts(
     text: str,
     voice_id: str,
     model_id: str,
-    language_code: str,
+    language_code: str | None,
     voice_settings: Mapping[str, Any],
     apply_text_normalization: str,
     apply_language_text_normalization: bool,
@@ -368,7 +391,10 @@ def _request_tts(
         "apply_language_text_normalization": bool(apply_language_text_normalization),
         "use_pvc_as_ivc": bool(use_pvc_as_ivc),
     }
-    if DOCUMENTED_MODEL_METADATA.get(model_id, _UNKNOWN_MODEL_METADATA)["supports_language_code"]:
+    if (
+        language_code
+        and DOCUMENTED_MODEL_METADATA.get(model_id, _UNKNOWN_MODEL_METADATA)["supports_language_code"]
+    ):
         payload["language_code"] = language_code
     if seed is not None:
         payload["seed"] = int(seed)
@@ -470,9 +496,11 @@ def _generate_chunk(
             excerpt = re.sub(r"\s+", " ", chunk_text.strip())
             if len(excerpt) > 180:
                 excerpt = f"{excerpt[:177]}..."
+            # The cause goes in the message too: the HTTP status and the provider's body are
+            # what tell an unpaid invoice from a bad voice id.
             raise RuntimeError(
                 f"Failed to synthesize ElevenLabs chunk {chunk_index + 1} "
-                f"(depth={depth}, chars={len(chunk_text)}). Excerpt: '{excerpt}'."
+                f"(depth={depth}, chars={len(chunk_text)}). Excerpt: '{excerpt}'. Cause: {error}"
             ) from error
 
         left_text, right_text = split_pair

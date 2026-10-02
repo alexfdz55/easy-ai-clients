@@ -243,6 +243,109 @@ def test_openrouter_duration_and_resolution_limits():
     assert "aspect_ratio" not in payload
 
 
+def test_heygen_video_1_gets_only_the_parameters_it_declares(monkeypatch):
+    """Its card says no `generate_audio` and no passthrough parameters, and OpenRouter
+    answers 400 to a parameter the model does not support."""
+    from easy_ai_clients.video._image_to_video._apis import openrouter as provider
+
+    captured = {}
+
+    def fake_http_json(method, url, headers=None, payload=None, timeout_seconds=None):
+        captured["payload"] = payload
+        return {"id": "job-heygen-1", "polling_url": "/api/v1/videos/job-heygen-1", "status": "pending"}
+
+    _patch_http(monkeypatch, fake_http_json)
+
+    result = provider.generate_image_to_video(
+        "The storm gathers over the warm ocean.",
+        image_url="https://cdn.example.com/still.webp",
+        model="heygen/heygen-video-1",
+        duration_seconds=6.0,
+        resolution="768P",
+        aspect_ratio="9:16",
+        generate_audio=False,
+        negative_prompt="blurry",
+        camera_lora="dolly_in",
+        seed=7,
+        sync=False,
+    )
+
+    assert result["request_id"] == "job-heygen-1"
+    assert captured["payload"] == {
+        "model": "heygen/heygen-video-1",
+        "prompt": "The storm gathers over the warm ocean.",
+        "frame_images": [
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://cdn.example.com/still.webp"},
+                "frame_type": "first_frame",
+            }
+        ],
+        "duration": 6,
+        "resolution": "768p",
+        "aspect_ratio": "9:16",
+        "seed": 7,
+    }
+
+
+def test_heygen_video_1_limits():
+    from easy_ai_clients.video import _openrouter_video_common as common
+
+    def build(**kwargs):
+        return common.build_generation_payload(
+            model=common.MODEL_HEYGEN_VIDEO_1,
+            prompt="A clip.",
+            mode="image_to_video",
+            kwargs=kwargs,
+            first_image="https://cdn.example.com/still.webp",
+        )
+
+    with pytest.raises(ValueError, match="duration must be 5-15"):
+        build(duration=4)
+    with pytest.raises(ValueError, match="does not support resolution"):
+        build(duration=5, resolution="1080p")
+    assert build(duration=15, resolution="480p")["duration"] == 15
+
+
+def test_clamp_duration_rounds_a_scene_length_up_and_keeps_it_in_range():
+    """Opt-in: a caller that passes the length of a scene gets a duration the model takes.
+    Without the flag nothing changes: the value is truncated and validated, as before."""
+    from easy_ai_clients.video import _openrouter_video_common as common
+
+    def duration(value, **kwargs):
+        return common.build_generation_payload(
+            model=common.MODEL_HEYGEN_VIDEO_1,
+            prompt="A clip.",
+            mode="image_to_video",
+            kwargs={"duration_seconds": value, **kwargs},
+            first_image="https://cdn.example.com/still.webp",
+        )
+
+    assert duration(5.6, clamp_duration=True)["duration"] == 6
+    assert duration(6.0, clamp_duration=True)["duration"] == 6
+    assert duration(3.2, clamp_duration=True)["duration"] == 5
+    assert duration(22, clamp_duration=True)["duration"] == 15
+    assert "clamp_duration" not in duration(6, clamp_duration=True)
+
+    assert duration(5.6)["duration"] == 5
+    with pytest.raises(ValueError, match="duration must be 5-15"):
+        duration(3.2)
+
+
+def test_a_seedance_model_keeps_its_audio_switch_and_its_extra_parameters():
+    from easy_ai_clients.video import _openrouter_video_common as common
+
+    payload = common.build_generation_payload(
+        model=common.MODEL_2_0_MINI,
+        prompt="A clip.",
+        mode="text_to_video",
+        kwargs={"duration": 5, "generate_audio": False, "camera_fixed": True},
+    )
+
+    assert payload["generate_audio"] is False
+    assert payload["camera_fixed"] is True
+
+
 def test_openrouter_extract_video_url_prefers_unsigned():
     from easy_ai_clients.video import _openrouter_video_common as common
 

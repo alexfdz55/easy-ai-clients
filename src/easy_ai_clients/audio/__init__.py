@@ -36,6 +36,7 @@ _SYNTHESIZE_APIS = (
     "deepgram",
     "deepinfra",
     "elevenlabs",
+    "falai",
     "google",
     "groq",
     "heygen",
@@ -128,7 +129,7 @@ def _load_voice(api):
     return importlib.import_module(f"._voices._apis.{api}", __name__)
 
 
-def generate(text, model=None, voice=None, language_code="en", *, api, **kwargs):
+def generate(text, model=None, voice=None, language_code=None, *, api, **kwargs):
     """Synthesize speech with the selected provider.
 
     ### Parameters:
@@ -137,7 +138,9 @@ def generate(text, model=None, voice=None, language_code="en", *, api, **kwargs)
       provider default is used.
     - voice (str | None): Provider-specific voice identifier. When omitted, the
       provider default is used.
-    - language_code (str): BCP-47 language code used by the provider.
+    - language_code (str | None): BCP-47 language code used by the provider. When
+      omitted, the provider adapter applies its own default; ElevenLabs and fal.ai send
+      none and let the model detect the language from the text.
     - api (str): Provider identifier listed by :func:`available_synthesize_apis`.
     - **kwargs: Extra provider-native parameters.
 
@@ -148,7 +151,9 @@ def generate(text, model=None, voice=None, language_code="en", *, api, **kwargs)
 
     try:
         module = _load_synthesize(api)
-        arguments: dict[str, Any] = {"language_code": language_code, **kwargs}
+        arguments: dict[str, Any] = dict(kwargs)
+        if language_code is not None:
+            arguments["language_code"] = language_code
         if model is not None:
             arguments["model"] = model
         if voice is not None:

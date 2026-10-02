@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import time
 import urllib.parse
@@ -32,6 +33,7 @@ MODEL_2_0_FAST = "bytedance/seedance-2.0-fast"
 MODEL_2_0 = "bytedance/seedance-2.0"
 MODEL_2_5 = "bytedance/seedance-2.5"
 MODEL_1_5_PRO = "bytedance/seedance-1-5-pro"
+MODEL_HEYGEN_VIDEO_1 = "heygen/heygen-video-1"
 
 DOCUMENTED_MODELS: dict[str, dict[str, Any]] = {
     MODEL_2_0_MINI: {
@@ -74,6 +76,20 @@ DOCUMENTED_MODELS: dict[str, dict[str, Any]] = {
         "aspect_ratios": ("1:1", "3:4", "9:16", "9:21", "4:3", "16:9", "21:9"),
         "default_resolution": "720p",
     },
+    # HeyGen Video 1 (2026-09-30). Every clip comes back with sound and there is no audio
+    # switch: its model card reports `generate_audio: false` and no passthrough parameters,
+    # and OpenRouter answers 400 to a parameter the chosen model does not support. So the
+    # payload carries only what the model declares.
+    MODEL_HEYGEN_VIDEO_1: {
+        "family": "heygen-video-1",
+        "duration_min": 5,
+        "duration_max": 15,
+        "resolutions": ("480p", "768p"),
+        "aspect_ratios": ("21:9", "16:9", "4:3", "1:1", "3:4", "9:16"),
+        "default_resolution": "768p",
+        "accepts_generate_audio": False,
+        "passthrough_parameters": (),
+    },
 }
 
 RESERVED_KWARGS = {
@@ -92,6 +108,7 @@ RESERVED_KWARGS = {
     "first_frame",
     "duration",
     "duration_seconds",
+    "clamp_duration",
     "resolution",
     "size",
     "aspect_ratio",
@@ -348,9 +365,21 @@ def _validate_duration(model: str, duration: int) -> None:
     maximum = int(meta["duration_max"])
     if duration < minimum or duration > maximum:
         raise ValueError(
-            f"OpenRouter Seedance model `{model}` duration must be {minimum}-{maximum} "
+            f"OpenRouter video model `{model}` duration must be {minimum}-{maximum} "
             f"seconds; got {duration}."
         )
+
+
+def _clamped_duration(model: str, duration: Any) -> int:
+    """A whole number of seconds the model accepts, for a caller that asks for the length
+    of a scene (5.6 s) instead of a provider duration: rounded up, then brought inside the
+    documented range. The clip can come out longer than asked, never shorter while the
+    model allows it; whoever edits the video trims the rest."""
+    seconds = max(1, math.ceil(float(duration) - 1e-6))
+    meta = DOCUMENTED_MODELS.get(model)
+    if meta is None:
+        return seconds
+    return max(int(meta["duration_min"]), min(int(meta["duration_max"]), seconds))
 
 
 def _validate_resolution(model: str, resolution: str) -> None:
@@ -360,7 +389,7 @@ def _validate_resolution(model: str, resolution: str) -> None:
     allowed = meta["resolutions"]
     if resolution not in allowed:
         raise ValueError(
-            f"OpenRouter Seedance model `{model}` does not support resolution `{resolution}`. "
+            f"OpenRouter video model `{model}` does not support resolution `{resolution}`. "
             f"Documented resolutions: {', '.join(allowed)}."
         )
 
@@ -372,7 +401,7 @@ def _validate_aspect_ratio(model: str, aspect_ratio: str) -> None:
     allowed = meta["aspect_ratios"]
     if aspect_ratio not in allowed:
         raise ValueError(
-            f"OpenRouter Seedance model `{model}` does not support aspect_ratio `{aspect_ratio}`. "
+            f"OpenRouter video model `{model}` does not support aspect_ratio `{aspect_ratio}`. "
             f"Documented aspect ratios: {', '.join(allowed)}."
         )
 
@@ -478,7 +507,10 @@ def build_generation_payload(
 
     duration = kwargs.get("duration", kwargs.get("duration_seconds"))
     if duration is not None:
-        duration_value = int(duration)
+        if kwargs.get("clamp_duration"):
+            duration_value = _clamped_duration(model, duration)
+        else:
+            duration_value = int(duration)
         _validate_duration(model, duration_value)
         payload["duration"] = duration_value
 
@@ -496,15 +528,21 @@ def build_generation_payload(
             _validate_aspect_ratio(model, aspect_text)
             payload["aspect_ratio"] = aspect_text
 
-    if kwargs.get("generate_audio") is not None:
+    meta = DOCUMENTED_MODELS.get(model) or {}
+    if kwargs.get("generate_audio") is not None and meta.get("accepts_generate_audio", True):
         payload["generate_audio"] = bool(kwargs.get("generate_audio"))
 
     for key in NATIVE_OPTIONAL:
         if key in kwargs and kwargs[key] is not None:
             payload[key] = kwargs[key]
 
+    # A model that declares its passthrough parameters gets only those; the others would
+    # come back as a 400. A model that does not declare them keeps getting everything.
+    passthrough = meta.get("passthrough_parameters")
     for key, value in kwargs.items():
         if key in RESERVED_KWARGS or key in payload or value is None:
+            continue
+        if passthrough is not None and key not in passthrough:
             continue
         payload[key] = value
 

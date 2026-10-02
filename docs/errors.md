@@ -10,6 +10,20 @@ safe empty output plus an `error` object:
 - `operation`
 - `model`
 
+Four more keys appear only when the failure was an HTTP response and the value
+is known. They are read from the low-level HTTP error even when an adapter
+wraps it in a friendlier exception:
+
+- `http_status`: the status code the provider answered with.
+- `provider_code`: the provider's own error code (`payment_issue`,
+  `quota_exceeded`, `feature_not_supported`...).
+- `provider_message`: the provider's own message, redacted and capped at 500
+  characters.
+- `category`: `"account"` when the status is 401, 402 or 403. The provider is
+  turning the account away (unpaid invoice, exhausted credits, revoked key),
+  not the request: retrying the same call cannot succeed, and the caller may
+  switch to another provider.
+
 Error messages are compacted and redacted where the dispatcher or adapter owns
 the failure boundary. API keys, authorization headers, tokens, matching
 environment-secret values, signed URLs, and large audio payloads should not be

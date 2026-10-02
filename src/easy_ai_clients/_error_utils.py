@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from collections.abc import Mapping
@@ -63,6 +64,95 @@ def request_id_of(error: Any) -> str:
     return ""
 
 
+#: HTTP statuses where the provider turns the ACCOUNT away, not the request: an unpaid
+#: invoice, exhausted credits, a revoked key, a locked workspace. Repeating the same call
+#: cannot succeed, so callers should not retry it and may switch to another provider.
+ACCOUNT_STATUS_CODES = (401, 402, 403)
+ERROR_CATEGORY_ACCOUNT = "account"
+
+
+def _provider_code_and_message(body: Any) -> tuple[str, str]:
+    """Read the provider's own error code and message out of a response body.
+
+    Providers nest them differently: ElevenLabs under ``detail`` (a mapping with ``status``
+    and ``message``), fal under ``detail`` too (a list of ``{type, msg}``), OpenAI-style
+    APIs under ``error``. A body that is not JSON is returned whole as the message.
+    """
+
+    text = str(body or "").strip()
+    if not text:
+        return "", ""
+    try:
+        parsed = json.loads(text)
+    except (TypeError, ValueError):
+        return "", text
+    node = parsed
+    if isinstance(parsed, Mapping):
+        node = parsed.get("detail", parsed.get("error", parsed))
+    if isinstance(node, list):
+        node = node[0] if node else ""
+    if isinstance(node, Mapping):
+        code = next(
+            (
+                str(node[key]).strip()
+                for key in ("status", "code", "type")
+                if isinstance(node.get(key), str) and node[key].strip()
+            ),
+            "",
+        )
+        message = next(
+            (
+                str(node[key]).strip()
+                for key in ("message", "msg")
+                if isinstance(node.get(key), str) and node[key].strip()
+            ),
+            "",
+        )
+        return code, message
+    return "", str(node or "").strip()
+
+
+def http_failure_of(error: Any) -> dict[str, Any]:
+    """Return what the HTTP failure behind an exception says, or ``{}``.
+
+    Walks the ``__cause__``/``__context__`` chain like :func:`request_id_of`, because the
+    status and the body live on the low-level HTTP error that a friendlier exception
+    wraps. Keys, each present only when known: ``http_status``, ``provider_code``,
+    ``provider_message`` and ``category`` (``"account"`` for :data:`ACCOUNT_STATUS_CODES`).
+    """
+
+    current = error
+    for _ in range(5):
+        if current is None:
+            break
+        response = getattr(current, "response", None)
+        status = getattr(current, "status_code", None)
+        if status is None:
+            status = getattr(response, "status_code", None)
+        try:
+            status = int(status)
+        except (TypeError, ValueError):
+            status = 0
+        if status >= 400:
+            failure: dict[str, Any] = {"http_status": status}
+            body = getattr(current, "response_text", None)
+            if body is None:
+                try:
+                    body = getattr(response, "text", None)
+                except Exception:
+                    body = None
+            code, message = _provider_code_and_message(body)
+            if code:
+                failure["provider_code"] = code[:80]
+            if message:
+                failure["provider_message"] = sanitize_error_message(message)[:500]
+            if status in ACCOUNT_STATUS_CODES:
+                failure["category"] = ERROR_CATEGORY_ACCOUNT
+            return failure
+        current = getattr(current, "__cause__", None) or getattr(current, "__context__", None)
+    return {}
+
+
 def sanitize_error_message(error: Any) -> str:
     """Return a compact provider/runtime error message with secrets redacted."""
 
@@ -86,8 +176,10 @@ def build_error(
 ) -> dict[str, Any]:
     """Build the public `error` object used by normalized failure results.
 
-    ``request_id`` is added only when known (explicitly or from the exception), so an
-    error without an id keeps exactly the keys it always had.
+    ``request_id`` is added only when known (explicitly or from the exception), and so
+    are the HTTP status, the provider's own code and message and the failure category
+    (see :func:`http_failure_of`): an error without them keeps exactly the keys it
+    always had.
     """
 
     payload = {
@@ -100,6 +192,7 @@ def build_error(
     known_id = str(request_id or "").strip() or request_id_of(error)
     if known_id:
         payload["request_id"] = known_id
+    payload.update(http_failure_of(error))
     return payload
 
 

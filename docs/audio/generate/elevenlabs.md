@@ -4,7 +4,7 @@ Snapshot date: 2026-04-24.
 
 ## Overview
 
-ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_clients.audio.generate(..., api="elevenlabs")`; the provider adapter exposes `generate(text, model="eleven_flash_v2_5", voice="NndrHq4eUijN4wsQVtzW", language_code="en", **kwargs)`.
+ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_clients.audio.generate(..., api="elevenlabs")`; the provider adapter exposes `generate(text, model="eleven_flash_v2_5", voice="NndrHq4eUijN4wsQVtzW", language_code=None, **kwargs)`.
 
 - Signup/account: https://elevenlabs.io/app/sign-up
 - API key variable: `ELEVENLABS_API_KEY`
@@ -17,9 +17,18 @@ ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_
 
 - Default model: `eleven_flash_v2_5`
 - Default voice: `NndrHq4eUijN4wsQVtzW`
-- Default language behavior: `language_code="en"` is forwarded only to models that support `language_code`.
+- Default language behavior: no `language_code` is sent unless the caller passes one, and
+  the model detects the language from the text. `language_code` ENFORCES a language for the
+  model and for text normalization, so a wrong one makes digits be read in that language
+  (a Portuguese "Em 1959" read as "nineteen fifty-nine" on Eleven v4 Turbo with `"en"`).
+  When passed, it is forwarded only to models that support it.
 - Lowest-cost default: Flash v2.5 with normal MP3 output, automatic text normalization, no premium extras.
 - Word timing source: native ElevenLabs character alignment from `/with-timestamps`.
+- Cost: characters of the text times the model's list price per character. It is an
+  estimate (`cost_is_estimated: true`): a temporary discount on the account is not applied.
+  `cost_details` carries `characters` and `provider_credits`, the account credits the
+  provider reports in its `character-cost` header. A credit is one character only on the
+  older models, so credits are never priced as characters.
 
 ## Public Parameters
 
@@ -37,6 +46,23 @@ Supported `output_format` values are the ElevenLabs documented MP3, PCM, u-law, 
 Voices are account-dependent. The wrapper accepts any voice id supplied through `voice` and validates the resulting provider call. The default voice was validated on the active account.
 
 ## Model Coverage
+
+### Model: `eleven_v4`
+
+Inherits the shared ElevenLabs parameter surface.
+
+- Supports `language_code`.
+- List price: 0.08 USD per 1,000 characters.
+
+### Model: `eleven_v4_turbo`
+
+Inherits the shared ElevenLabs parameter surface.
+
+- Supports `language_code`.
+- List price: 0.04 USD per 1,000 characters.
+- `speed` is accepted and has no effect: the same text came out with the same
+  duration at 0.8 and at 1.1.
+- Validated: yes, speech with timestamps on 2026-10-02.
 
 ### Model: `eleven_v3`
 
