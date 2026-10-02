@@ -3,6 +3,18 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.2 - 2026-10-02
+
+### Fixed
+
+- ElevenLabs TTS cost. It was computed from the `character-cost` response header as if it
+  were a character count. The header is the cost in account credits, and a credit is one
+  character only on the older models: an Eleven v4 Turbo narration of 760 characters
+  reports 51 credits, so its cost came out as 0.002 USD instead of 0.03 at list price.
+  The cost is now the characters of the text times the list price; `cost_details`
+  carries `characters` and `provider_credits`. The Flash and Turbo v2 families were
+  under-reported the same way (half a credit per character).
+
 ## 0.19.1 - 2026-10-02
 
 Released from `main`. It does not include `0.20.0` (Suno V6 on Kie), which lives on
