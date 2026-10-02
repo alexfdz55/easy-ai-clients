@@ -3,14 +3,35 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.21.0 - 2026-10-02
 
 ### Added
 
+- Inline style presets: `style` accepts a full preset dictionary with the
+  schema of the files in `music/styles/`, besides a predefined name, in
+  `music.generate`, `music.build_lyrics_prompt` and the request builders.
+  Callers that keep their own style catalog no longer need a library
+  release per style. The generation reports the preset `id` as `style`.
+- `music.validate_style_preset(style_preset)` checks a preset before it is
+  stored or used and returns a copy. It raises `ValueError` naming every
+  invalid field (`id`, `tempo_bpm`, `key_scale`, `time_signature`,
+  `energy`, `default_language`, the three `style_prompts` sizes and the
+  `voice_presets` of each size and gender).
 - Eight music style presets for narrative songs: `ballad`, `singer_songwriter`,
   `corrido`, `dark_folk`, `bachata`, `musical_theatre`, `cinematic_epic` and
   `lullaby`. Same shape and limits as the other presets; the catalog goes from
   30 to 38 styles.
+- Three more song languages: `it-IT`, `pl-PL` and `nl-NL` are accepted as
+  `language` and as a preset's `default_language`. The style prompt names the
+  language (`Italian lyrics`, `Polish vocals`) and ACE-Step models receive
+  `it`, `pl` or `nl` as `vocal_language`. Before, a caller had to omit the
+  language for those songs and the prompt named the preset's default one.
+
+### Fixed
+
+- The eight narrative presets declared `default_language` as `en` or `es`,
+  which the language check rejects: generating with one of them and no
+  `language` raised `ValueError`. They now use `en-US` and `es-ES`.
 
 ## 0.20.0 - 2026-09-29
 
