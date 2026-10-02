@@ -203,7 +203,7 @@ def generate(
         "speed": speed,
     }
 
-    total_billed_characters = 0
+    provider_credits = 0
     chunk_records: list[dict[str, Any]] = []
     for chunk_index, chunk_text in enumerate(text_chunks):
         chunk_records.extend(
@@ -248,16 +248,22 @@ def generate(
 
     request_ids: list[str] = []
     for chunk in chunk_records:
-        total_billed_characters += int(chunk.pop("character_cost", 0) or 0)
+        provider_credits += int(chunk.pop("character_cost", 0) or 0)
         chunk_request_id = chunk.pop("request_id", "")
         if chunk_request_id:
             request_ids.append(str(chunk_request_id))
 
-    cost_usd = round((total_billed_characters / 1_000_000.0) * model_config["usd_per_million_chars"], 6)
+    # The price list charges per character of text. The `character-cost` header is NOT a
+    # character count: it is what the request cost in account credits, and a credit is one
+    # character only on the older models (51 credits for 760 characters on Eleven v4 Turbo).
+    # Pricing those credits as characters reported a fraction of the real cost.
+    characters = sum(len(chunk_text) for chunk_text in text_chunks)
+    cost_usd = round((characters / 1_000_000.0) * model_config["usd_per_million_chars"], 6)
     result = _finalize_synthesis_output(
         chunk_records,
         cost_usd=cost_usd if documented_model else 0.0,
     )
+    result["cost_details"] = {"characters": characters, "provider_credits": provider_credits}
     if not documented_model:
         result["warnings"] = f"No documented pricing metadata is available for ElevenLabs model `{model}`."
     if request_ids:

@@ -126,6 +126,30 @@ def test_the_v4_models_are_documented_with_their_price():
     assert DOCUMENTED_MODEL_METADATA["eleven_multilingual_v2"]["usd_per_million_chars"] == 80.0
 
 
+def test_the_elevenlabs_cost_comes_from_the_text_not_from_the_credits_header(monkeypatch):
+    """`character-cost` is what the request cost in account credits. On Eleven v4 Turbo a
+    760-character narration reports 51: pricing that as characters gave 0.002 USD."""
+    from easy_ai_clients.audio._synthesize._apis import elevenlabs
+
+    text = "a" * 760
+
+    def fake_finalize(records, cost_usd):
+        return {"cost_usd": cost_usd, "cost_details": {}, "audio": object(), "words": {}}
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    monkeypatch.setattr(
+        elevenlabs, "_generate_chunk", lambda *args, **kwargs: [{"character_cost": 51, "request_id": "tts-1"}]
+    )
+    monkeypatch.setattr(elevenlabs, "_finalize_synthesis_output", fake_finalize)
+
+    turbo = elevenlabs.generate(text, model="eleven_v4_turbo", voice="v1")
+    multilingual = elevenlabs.generate(text, model="eleven_multilingual_v2", voice="v1")
+
+    assert turbo["cost_usd"] == pytest.approx(0.0304)  # 760 caracteres a 40 USD por millón
+    assert turbo["cost_details"] == {"characters": 760, "provider_credits": 51}
+    assert multilingual["cost_usd"] == pytest.approx(0.0608)
+
+
 # --- fal.ai speech -----------------------------------------------------------------------
 
 

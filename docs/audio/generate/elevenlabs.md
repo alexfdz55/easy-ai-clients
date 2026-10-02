@@ -20,6 +20,11 @@ ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_
 - Default language behavior: `language_code="en"` is forwarded only to models that support `language_code`.
 - Lowest-cost default: Flash v2.5 with normal MP3 output, automatic text normalization, no premium extras.
 - Word timing source: native ElevenLabs character alignment from `/with-timestamps`.
+- Cost: characters of the text times the model's list price per character. It is an
+  estimate (`cost_is_estimated: true`): a temporary discount on the account is not applied.
+  `cost_details` carries `characters` and `provider_credits`, the account credits the
+  provider reports in its `character-cost` header. A credit is one character only on the
+  older models, so credits are never priced as characters.
 
 ## Public Parameters
 
