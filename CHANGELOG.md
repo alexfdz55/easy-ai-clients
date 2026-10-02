@@ -3,6 +3,18 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.4 - 2026-10-02
+
+### Fixed
+
+- Speech no longer invents English. `audio.generate` defaulted `language_code` to
+  `"en"`, and ElevenLabs and fal.ai forwarded it. The field enforces a language for the
+  model and for text normalization: Eleven v4 Turbo read the digits of a Portuguese
+  script in English ("Em 1959" as "nineteen fifty-nine"). Multilingual v2 ignores the
+  field, so it had gone unnoticed. Now no language is sent unless the caller names one,
+  and the model detects it from the text. The other speech providers keep their own
+  default.
+
 ## 0.19.3 - 2026-10-02
 
 ### Added
