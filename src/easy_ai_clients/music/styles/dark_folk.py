@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'dark_folk',
                        'antigo, para historias de misterio, perda e lendas.',
                  'en': 'Dark folk with bare acoustic guitar, minor keys and the feel '
                        'of an old tale, for stories of mystery, loss and legend.'},
- 'default_language': 'en',
+ 'default_language': 'en-US',
  'tempo_bpm': 76,
  'key_scale': 'D minor',
  'time_signature': 3,

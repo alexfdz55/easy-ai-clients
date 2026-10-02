@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'corrido',
                        'pessoa contada do comeco ao fim, verso a verso.',
                  'en': 'Mexican corrido with accordion and bajo sexto: the story of '
                        'one person told from start to finish, verse by verse.'},
- 'default_language': 'es',
+ 'default_language': 'es-ES',
  'tempo_bpm': 118,
  'key_scale': 'A major',
  'time_signature': 2,

@@ -113,6 +113,7 @@ def test_public_exports_are_exact():
         "get_generation_options",
         "get_status",
         "get_style_presets",
+        "validate_style_preset",
     ]
 
 

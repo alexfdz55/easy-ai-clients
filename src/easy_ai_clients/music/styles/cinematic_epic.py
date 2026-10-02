@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'cinematic_epic',
                        'para historias de herois, batalhas e destinos.',
                  'en': 'Cinematic epic with orchestra, choir and big percussion, for '
                        'stories of heroes, battles and destiny.'},
- 'default_language': 'en',
+ 'default_language': 'en-US',
  'tempo_bpm': 96,
  'key_scale': 'C minor',
  'time_signature': 4,

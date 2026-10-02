@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'bachata',
                        'despedidas contados com romantismo e dor.',
                  'en': 'Dominican bachata with requinto guitar and bongo: love, '
                        'jealousy and goodbyes told with romance and heartache.'},
- 'default_language': 'es',
+ 'default_language': 'es-ES',
  'tempo_bpm': 128,
  'key_scale': 'E minor',
  'time_signature': 4,

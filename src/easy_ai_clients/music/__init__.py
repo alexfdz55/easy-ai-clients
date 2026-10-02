@@ -17,6 +17,7 @@ from ._router import (
     get_status as _get_status,
 )
 from ._style_adapter import get_style_presets as _get_style_presets
+from ._style_adapter import validate_style_preset as _validate_style_preset
 
 __all__ = [
     "MusicInputLimitError",
@@ -28,6 +29,7 @@ __all__ = [
     "get_generation_options",
     "get_status",
     "get_style_presets",
+    "validate_style_preset",
 ]
 
 
@@ -50,7 +52,9 @@ def generate(lyrics, model=None, *, api, style=None, prompt=None, **kwargs):
             - `"kie"`: Kie.ai Suno V5.5 or V6 (V6 honors `duration` and
               accepts `persona_id` with `persona_model`).
             - `"runware"`: Runware ACE-Step.
-        style: Optional. Exact predefined style name. Use `None` for no preset.
+        style: Optional. Exact predefined style name, or a full inline preset
+            dictionary with the schema of the predefined presets (see
+            `validate_style_preset`). Use `None` for no preset.
         prompt: Optional. Music prompt. Required when `style` is `None`.
             When both `style` and `prompt` are passed, `prompt` wins.
         **kwargs: Optional. Standardized music parameters.
@@ -146,6 +150,25 @@ def get_style_presets(fields=None, styles=None):
     return _get_style_presets(fields=fields, styles=styles)
 
 
+def validate_style_preset(style_preset):
+    """Validate an inline style preset and return a copy of it.
+
+    Callers that keep their own style catalog pass a full preset dictionary as
+    `style` instead of a predefined name. This checks it has the schema of the
+    predefined presets before it is stored or used.
+
+    Args:
+        style_preset: Required. Preset dictionary.
+
+    Returns:
+        A deep copy of the preset. This function does not call provider APIs.
+
+    Raises:
+        ValueError: If a required field is missing or has the wrong shape.
+    """
+    return _validate_style_preset(style_preset)
+
+
 def build_lyrics_prompt(
     prompt,
     lyrics_text=None,
@@ -161,7 +184,8 @@ def build_lyrics_prompt(
         prompt: Required. User creative intent for the lyric.
         lyrics_text: Optional. Existing lyric text to adapt.
         duration: Optional. Approximate target duration in seconds.
-        style: Optional. Exact predefined style name.
+        style: Optional. Exact predefined style name, or a full inline preset
+            dictionary (see `validate_style_preset`).
         gender: Optional. Accepted values: `"male"`, `"female"`, or `"both"`.
         voice_description: Optional. Direct voice guidance. Overrides preset
             and generic gender voice guidance.

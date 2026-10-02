@@ -187,6 +187,41 @@ def test_language_override_is_prompt_only_for_non_ace_providers():
         assert "vocal_language" not in request["kwargs"]
 
 
+def test_language_override_accepts_italian_polish_and_dutch():
+    cases = [
+        ("it-IT", "Italian", "it"),
+        ("pl-PL", "Polish", "pl"),
+        ("nl-NL", "Dutch", "nl"),
+    ]
+
+    for locale, label, ace_code in cases:
+        ace = style_adapter.build_generation_request(
+            provider="runware",
+            model="runware:ace-step@v1.5-xl-turbo",
+            lyrics=TEST_LYRICS,
+            style="ballad",
+            kwargs={"language": locale},
+        )
+        kie = style_adapter.build_generation_request(
+            provider="kie",
+            model="V5_5",
+            lyrics=TEST_LYRICS,
+            style="ballad",
+            kwargs={"gender": "female", "language": locale},
+        )
+
+        assert f"{label} lyrics" in ace["kwargs"]["prompt"], locale
+        assert ace["kwargs"]["vocal_language"] == ace_code
+        assert f"{label} vocals" in kie["kwargs"]["prompt"], locale
+
+
+def test_inline_preset_can_default_to_any_accepted_language():
+    preset = _inline_preset(default_language="it-IT")
+
+    assert style_adapter.validate_style_preset(preset)["default_language"] == "it-IT"
+    assert style_adapter.default_language_for_style(preset) == "it-IT"
+
+
 def test_language_override_rejects_unknown_language():
     with pytest.raises(ValueError, match="language must be one of"):
         style_adapter.build_generation_request(
@@ -559,3 +594,124 @@ def test_style_notes_are_appended_to_the_rendered_prompt():
     request = build_generation_request("kie", "V5_5", "la la", prompt="dreamy pop", kwargs={"style_notes": "short"})
     assert request["kwargs"]["prompt"] == "dreamy pop, short"
 
+
+
+# Inline presets: a caller that keeps its own genre catalog passes the whole preset instead of a
+# file name (Jaymaker stores its genres in its database).
+
+
+def _inline_preset(**overrides):
+    preset = style_adapter.get_style_presets(styles="pop")["pop"]
+    preset["id"] = "animated_film_song"
+    preset.update(overrides)
+    return preset
+
+
+def test_resolve_style_accepts_an_inline_preset():
+    preset = _inline_preset()
+
+    resolved = style_adapter.resolve_style(preset)
+
+    assert resolved["style_source"] == "preset"
+    assert resolved["style"] == "animated_film_song"
+    assert resolved["style_preset"] == preset
+    # A copy: the caller's dictionary is never shared with the request.
+    assert resolved["style_preset"] is not preset
+    assert resolved["style_preset"]["voice_presets"] is not preset["voice_presets"]
+
+
+def test_an_inline_preset_does_not_need_a_style_file():
+    assert "animated_film_song" not in style_adapter.list_styles()
+
+    request = style_adapter.build_generation_request(
+        provider="kie",
+        model="V5_5",
+        lyrics=TEST_LYRICS,
+        style=_inline_preset(),
+    )
+
+    assert request["style_source"] == "preset"
+    assert request["style"] == "animated_film_song"
+    assert request["kwargs"]["prompt"].startswith("animated film song")
+
+
+@pytest.mark.parametrize(
+    ("provider", "model"),
+    [
+        ("kie", "V5_5"),
+        ("elevenlabs", "music_v2"),
+        ("deapi", "AceStep_1_5_Turbo"),
+    ],
+)
+def test_an_inline_preset_renders_exactly_like_its_file(provider, model):
+    from_file = style_adapter.build_generation_request(
+        provider=provider, model=model, lyrics=TEST_LYRICS, style="sertanejo"
+    )
+    inline = style_adapter.get_style_presets(styles="sertanejo")["sertanejo"]
+
+    from_inline = style_adapter.build_generation_request(
+        provider=provider, model=model, lyrics=TEST_LYRICS, style=inline
+    )
+
+    assert from_inline == from_file
+
+
+def test_voice_guidance_and_default_language_read_the_inline_preset():
+    preset = _inline_preset(default_language="es-ES")
+    preset["voice_presets"]["large"]["female"] = "A bright storyteller soprano."
+
+    assert style_adapter.default_language_for_style(preset) == "es-ES"
+    assert (
+        style_adapter.build_voice_guidance(style=preset, gender="female")
+        == "A bright storyteller soprano."
+    )
+
+
+@pytest.mark.parametrize(
+    "missing",
+    ["id", "default_language", "style_prompts", "voice_presets", "tempo_bpm", "key_scale"],
+)
+def test_an_inline_preset_without_a_required_field_is_rejected(missing):
+    preset = _inline_preset()
+    del preset[missing]
+
+    with pytest.raises(ValueError, match=missing):
+        style_adapter.resolve_style(preset)
+
+
+def test_an_inline_preset_with_a_broken_shape_is_rejected():
+    without_size = _inline_preset()
+    del without_size["style_prompts"]["medium"]
+    with pytest.raises(ValueError, match="style_prompts.medium"):
+        style_adapter.resolve_style(without_size)
+
+    without_voice = _inline_preset()
+    del without_voice["voice_presets"]["large"]["female"]
+    with pytest.raises(ValueError, match="voice_presets.large.female"):
+        style_adapter.resolve_style(without_voice)
+
+    wrong_default = _inline_preset()
+    wrong_default["voice_presets"]["default_gender"] = "both"
+    with pytest.raises(ValueError, match="voice_presets.default_gender"):
+        style_adapter.resolve_style(wrong_default)
+
+    empty_id = _inline_preset(id="  ")
+    with pytest.raises(ValueError, match="id"):
+        style_adapter.resolve_style(empty_id)
+
+    unknown_language = _inline_preset(default_language="xx-XX")
+    with pytest.raises(ValueError, match="language"):
+        style_adapter.resolve_style(unknown_language)
+
+
+def test_the_predefined_files_pass_the_inline_validation():
+    for style in style_adapter.list_styles():
+        preset = style_adapter.get_style_presets(styles=style)[style]
+
+        assert style_adapter.resolve_style(preset)["style"] == style
+
+
+def test_another_type_is_still_an_unknown_style():
+    for value in (38, ["pop"], "Pop"):
+        with pytest.raises(ValueError, match="Unknown style"):
+            style_adapter.resolve_style(value)

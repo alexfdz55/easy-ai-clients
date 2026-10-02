@@ -4,7 +4,7 @@ STYLE_PRESET = {'id': 'ballad',
                        'grande.',
                  'en': 'Emotional ballad with piano, strings and a chorus that grows, '
                        'built around a clear story and a big final lift.'},
- 'default_language': 'en',
+ 'default_language': 'en-US',
  'tempo_bpm': 72,
  'key_scale': 'E-flat major',
  'time_signature': 4,

@@ -44,6 +44,8 @@ def test_language_option_is_documented_as_style_adapter_control():
             language = parameters["language"]
             assert language["provider_field"] == "easy_ai_clients.music._style_adapter"
             assert "pt-BR" in language["accepted_values"], (model_key, api)
+            for locale in ("it-IT", "pl-PL", "nl-NL"):
+                assert locale in language["accepted_values"], (model_key, api, locale)
             assert parameters["gender"]["provider_field"] == "easy_ai_clients.music._style_adapter"
             assert "male" in parameters["gender"]["accepted_values"]
             assert parameters["voice_description"]["provider_field"] == (

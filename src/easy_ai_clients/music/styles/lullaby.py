@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'lullaby',
                        'calma, para contos de dormir.',
                  'en': 'Lullaby with music box and a soft lead, slow and calm, for '
                        'bedtime tales.'},
- 'default_language': 'en',
+ 'default_language': 'en-US',
  'tempo_bpm': 66,
  'key_scale': 'F major',
  'time_signature': 3,

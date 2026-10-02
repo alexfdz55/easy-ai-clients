@@ -132,7 +132,7 @@ def _base_text_parameters(provider):
         "language": _option(
             False,
             None,
-            "Accepts pt-BR, pt-PT, en-US, en-GB, en-IE, es-ES, fr-FR, or de-DE.",
+            "Accepts pt-BR, pt-PT, en-US, en-GB, en-IE, es-ES, fr-FR, de-DE, it-IT, pl-PL, or nl-NL.",
             "Local language override for style-generated prompts. ACE-Step models also receive mapped vocal_language.",
             "easy_ai_clients.music._style_adapter",
             "Use with style to override the preset vocal language.",

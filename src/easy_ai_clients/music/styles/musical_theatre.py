@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'musical_theatre',
                        'historia cantada pela propria personagem, cena a cena.',
                  'en': 'Musical theatre with orchestra and stage performance: the '
                        'story sung by its own character, scene by scene.'},
- 'default_language': 'en',
+ 'default_language': 'en-US',
  'tempo_bpm': 104,
  'key_scale': 'B-flat major',
  'time_signature': 4,

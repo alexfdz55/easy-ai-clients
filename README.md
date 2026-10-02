@@ -80,7 +80,7 @@ Applications should use the public dispatcher modules.
 | `text` | `generate`, `list_models`, `update_cost`, `available_apis` | Text-in/text-out generation |
 | `audio` | `generate`, `transcribe`, `prepare_transcription_audio`, voice helpers, `update_cost` | Speech synthesis, transcription, and voice workflows |
 | `image` | `generate`, `edit`, `remix`, `analyze`, `update_cost` | Image generation, editing, remixing, and vision analysis |
-| `music` | `generate`, `get_status`, `download_result`, `get_generation_options`, `get_style_presets`, `build_lyrics_prompt` | Narrow validated lyric-based music generation |
+| `music` | `generate`, `get_status`, `download_result`, `get_generation_options`, `get_style_presets`, `validate_style_preset`, `build_lyrics_prompt` | Narrow validated lyric-based music generation |
 | `video` | `generate`, `text_to_video`, `image_to_video`, `video_to_video`, `motion_control`, `avatar_video`, `video_with_audio`, `create_avatar`, `image_lipsync`, `video_lipsync`, `agent_video`, `translate`, async helpers | Video generation, lip-sync, avatar, translation, and HeyGen resource workflows |
 | `media` | `upload_asset`, `delete_asset`, `available_apis` | Provider asset helpers |
 | `webhooks` | endpoint, event, and secret-rotation helpers | Provider webhook management |
@@ -203,6 +203,11 @@ variants, plus `voice_presets` with `default_gender` and `small`, `medium`, and
 style and voice prompts. If provider input limits are exceeded, it retries
 progressively smaller preset prompts before raising `music.MusicInputLimitError`.
 ElevenLabs uses `style_prompts.large` with `voice_presets.small` by default.
+
+`style` is a predefined name or a full preset dictionary with the same
+schema, for callers that keep their own style catalog. Check a preset with
+`music.validate_style_preset(preset)` before storing it: it raises
+`ValueError` naming every invalid field.
 
 Use `gender="male"`, `gender="female"`, `gender="both"`, or
 `voice_description` for prompt-level voice guidance. Over-limit music inputs

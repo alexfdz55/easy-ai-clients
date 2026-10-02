@@ -42,6 +42,9 @@ _LANGUAGE_LABELS = {
     "pt-PT": "European Portuguese",
     "fr-FR": "French",
     "de-DE": "German",
+    "it-IT": "Italian",
+    "pl-PL": "Polish",
+    "nl-NL": "Dutch",
 }
 
 _ACE_STEP_LANGUAGE_CODES = {
@@ -53,6 +56,9 @@ _ACE_STEP_LANGUAGE_CODES = {
     "es-ES": "es",
     "fr-FR": "fr",
     "de-DE": "de",
+    "it-IT": "it",
+    "pl-PL": "pl",
+    "nl-NL": "nl",
 }
 
 _DEAPI_ACE_STEP_MODELS = {
@@ -124,16 +130,20 @@ def get_style_presets(fields=None, styles=None):
 
 
 def resolve_style(style):
-    """Resolve an optional exact style name to a preset request.
+    """Resolve an optional style to a preset request.
 
     Args:
-        style: Optional. Exact style file stem. Use `None` for no preset.
+        style: Optional. Exact style file stem, or a full inline preset
+            dictionary with the schema of the files in `music/styles/`, for
+            callers that keep their own style catalog. Use `None` for no preset.
 
     Returns:
         A dictionary with `style_source`, `style`, and optional `style_preset`.
+        For an inline preset, `style` is its `id` and `style_preset` is a copy.
 
     Raises:
-        ValueError: If `style` is not `None` and does not match a style file.
+        ValueError: If `style` is not `None`, does not match a style file, and
+            is not a valid inline preset.
     """
     if style is None:
         return {
@@ -141,13 +151,90 @@ def resolve_style(style):
             "style": None,
             "style_preset": None,
         }
-    if _is_predefined_style(style):
+    if isinstance(style, dict):
+        style_preset = validate_style_preset(style)
+        return {
+            "style_source": "preset",
+            "style": style_preset["id"],
+            "style_preset": style_preset,
+        }
+    if isinstance(style, str) and _is_predefined_style(style):
         return {
             "style_source": "preset",
             "style": style,
             "style_preset": _load_style_preset(style),
         }
     raise ValueError(f"Unknown style: {style}")
+
+
+def validate_style_preset(style_preset):
+    """Validate an inline style preset and return a copy of it.
+
+    The schema is the one of the files in `music/styles/`. The fields checked
+    here are the ones the request builders read without a default, so a preset
+    that passes renders for every provider.
+
+    Args:
+        style_preset: Required. Preset dictionary.
+
+    Returns:
+        A deep copy of the preset.
+
+    Raises:
+        ValueError: If a required field is missing or has the wrong shape. The
+            message names every invalid field.
+    """
+    if not isinstance(style_preset, dict):
+        raise ValueError("style preset must be a dictionary")
+
+    invalid = []
+
+    def _text(path, value):
+        if not isinstance(value, str) or not value.strip():
+            invalid.append(path)
+
+    _text("id", style_preset.get("id"))
+    _text("key_scale", style_preset.get("key_scale"))
+    _text("energy", style_preset.get("energy"))
+    for field in ("tempo_bpm", "time_signature"):
+        value = style_preset.get(field)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            invalid.append(field)
+
+    style_prompts = style_preset.get("style_prompts")
+    if not isinstance(style_prompts, dict):
+        invalid.append("style_prompts")
+    else:
+        for size in PROMPT_SIZES:
+            _text(f"style_prompts.{size}", style_prompts.get(size))
+
+    voice_presets = style_preset.get("voice_presets")
+    if not isinstance(voice_presets, dict):
+        invalid.append("voice_presets")
+    else:
+        if voice_presets.get("default_gender") not in {"male", "female"}:
+            invalid.append("voice_presets.default_gender")
+        for size in PROMPT_SIZES:
+            voices = voice_presets.get(size)
+            if not isinstance(voices, dict):
+                invalid.append(f"voice_presets.{size}")
+                continue
+            for gender in ("male", "female"):
+                _text(f"voice_presets.{size}.{gender}", voices.get(gender))
+
+    for field in ("instrumentation", "arrangement", "mood"):
+        value = style_preset.get(field)
+        if value is not None and not (
+            isinstance(value, list) and all(isinstance(item, str) for item in value)
+        ):
+            invalid.append(field)
+
+    if "default_language" not in style_preset:
+        invalid.append("default_language")
+    if invalid:
+        raise ValueError(f"Invalid style preset fields: {', '.join(invalid)}")
+    _validate_language(style_preset["default_language"])
+    return deepcopy(style_preset)
 
 
 def build_voice_guidance(
@@ -193,7 +280,8 @@ def build_generation_request(
         provider: Required. Provider file name from `music/_apis/`.
         model: Required. Exact provider model.
         lyrics: Required. Caller-provided lyrics.
-        style: Optional. Exact predefined style name. Use `None` for no preset.
+        style: Optional. Exact predefined style name, or a full inline preset
+            dictionary (see `resolve_style`). Use `None` for no preset.
         prompt: Optional. Caller prompt. If provided with a preset, it replaces
             the preset-rendered prompt.
         kwargs: Optional. Caller kwargs. These override generated preset kwargs.
@@ -277,7 +365,7 @@ def build_generation_request(
         "model": model,
         "kwargs": _merge_kwargs(generated_kwargs, user_kwargs),
         "style_source": style_source,
-        "style": style,
+        "style": resolved["style"],
     }
 
 

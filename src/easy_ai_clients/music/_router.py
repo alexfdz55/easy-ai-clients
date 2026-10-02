@@ -49,7 +49,9 @@ def generate(lyrics, model=None, *, api, style=None, prompt=None, **kwargs):
         model: Optional. Provider model ID or standardized model key. When
             omitted, a validated provider default is used.
         api: Required. Provider module key from `music/_apis/`.
-        style: Optional. Exact predefined style name. Use `None` for no preset.
+        style: Optional. Exact predefined style name, or a full inline preset
+            dictionary with the schema of the predefined presets (see
+            `validate_style_preset`). Use `None` for no preset.
         prompt: Optional. Music prompt. Required when `style` is `None`.
             When both `style` and `prompt` are passed, `prompt` wins.
         **kwargs: Optional. Standardized music parameters.

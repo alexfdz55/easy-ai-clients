@@ -3,7 +3,7 @@ STYLE_PRESET = {'id': 'singer_songwriter',
                        'poucos instrumentos para contar uma historia pessoal.',
                  'en': 'Songwriter song with acoustic guitar and a close lead, the '
                        'lyric up front and few instruments to tell a personal story.'},
- 'default_language': 'en',
+ 'default_language': 'en-US',
  'tempo_bpm': 92,
  'key_scale': 'G major',
  'time_signature': 4,

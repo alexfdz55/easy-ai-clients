@@ -58,7 +58,8 @@ def build_lyrics_prompt(
             whitespace-only text is treated as absent.
         duration: Optional. Approximate target duration in seconds. Invalid
             values are treated as absent.
-        style: Optional. Exact implemented style ID.
+        style: Optional. Exact implemented style ID, or a full inline preset
+            dictionary.
         gender: Optional. Accepted values:
             - "male": Use male voice guidance.
             - "female": Use female voice guidance.
@@ -340,5 +341,8 @@ def _style_language_label(language):
         "pt-PT": "European Portuguese",
         "fr-FR": "French",
         "de-DE": "German",
+        "it-IT": "Italian",
+        "pl-PL": "Polish",
+        "nl-NL": "Dutch",
     }
     return labels.get(language, language)
