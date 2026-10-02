@@ -36,6 +36,7 @@ _SYNTHESIZE_APIS = (
     "deepgram",
     "deepinfra",
     "elevenlabs",
+    "falai",
     "google",
     "groq",
     "heygen",

@@ -57,7 +57,7 @@ the repository template:
 | `DEEPINFRA_API_KEY` | DeepInfra text, audio generate/transcribe/voices, and image operations |
 | `DEEPSEEK_API_KEY` | `text.generate(api="deepseek")` |
 | `ELEVENLABS_API_KEY` | ElevenLabs audio generation, transcription, voice helpers, and `music.generate(api="elevenlabs")` |
-| `FAL_KEY` | `text.generate(api="falai")`, `audio.transcribe(api="falai")`, image operations using `api="falai"`, and video operations using `api="falai"` |
+| `FAL_KEY` | `text.generate(api="falai")`, `audio.generate(api="falai")`, `audio.transcribe(api="falai")`, image operations using `api="falai"`, and video operations using `api="falai"` |
 | `FIREWORKS_API_KEY` | Fireworks text, audio transcription, and image operations |
 | `GOOGLE_API_KEY` | Google text, audio generation/transcription, image operations, Google Veo video operations, and `music.generate(api="google")` |
 | `GROQ_API_KEY` | Groq text, audio generation/transcription, and image analysis |

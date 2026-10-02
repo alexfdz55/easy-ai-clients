@@ -50,6 +50,7 @@ For copyable dispatcher examples and normalized response structures, see
 | [`deepgram`](audio/generate/deepgram.md) | `DEEPGRAM_API_KEY` | Aura TTS. |
 | [`deepinfra`](audio/generate/deepinfra.md) | `DEEPINFRA_API_KEY` | Multiple Kokoro/Sesame voices. |
 | [`elevenlabs`](audio/generate/elevenlabs.md) | `ELEVENLABS_API_KEY` | Speech and sound effects. |
+| [`falai`](audio/generate/falai.md) | `FAL_KEY` | ElevenLabs voices through fal.ai, with timings. |
 | [`google`](audio/generate/google.md) | `GOOGLE_API_KEY` | Gemini speech. |
 | [`groq`](audio/generate/groq.md) | `GROQ_API_KEY` | PlayAI TTS. |
 | [`heygen`](audio/generate/heygen.md) | `HEYGEN_KEY` | HeyGen v3 Starfish speech. |

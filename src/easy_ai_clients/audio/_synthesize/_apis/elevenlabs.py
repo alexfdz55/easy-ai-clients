@@ -39,14 +39,24 @@ CATALOG_URL = "https://elevenlabs.io/docs/api-reference/models/get-all"
 PRICING_URL = "https://elevenlabs.io/pricing/api/"
 
 DOCUMENTED_MODEL_METADATA = {
+    "eleven_v4": {
+        "char_limit": 5000,
+        "usd_per_million_chars": 80.0,
+        "supports_language_code": True,
+    },
+    "eleven_v4_turbo": {
+        "char_limit": 5000,
+        "usd_per_million_chars": 40.0,
+        "supports_language_code": True,
+    },
     "eleven_v3": {
         "char_limit": 5000,
-        "usd_per_million_chars": 100.0,
+        "usd_per_million_chars": 80.0,
         "supports_language_code": True,
     },
     "eleven_multilingual_v2": {
         "char_limit": 10000,
-        "usd_per_million_chars": 100.0,
+        "usd_per_million_chars": 80.0,
         "supports_language_code": True,
     },
     "eleven_multilingual_v1": {
@@ -56,22 +66,22 @@ DOCUMENTED_MODEL_METADATA = {
     },
     "eleven_flash_v2_5": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": True,
     },
     "eleven_flash_v2": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": False,
     },
     "eleven_turbo_v2_5": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": True,
     },
     "eleven_turbo_v2": {
         "char_limit": 40000,
-        "usd_per_million_chars": 50.0,
+        "usd_per_million_chars": 40.0,
         "supports_language_code": False,
     },
     "eleven_monolingual_v1": {
@@ -470,9 +480,11 @@ def _generate_chunk(
             excerpt = re.sub(r"\s+", " ", chunk_text.strip())
             if len(excerpt) > 180:
                 excerpt = f"{excerpt[:177]}..."
+            # The cause goes in the message too: the HTTP status and the provider's body are
+            # what tell an unpaid invoice from a bad voice id.
             raise RuntimeError(
                 f"Failed to synthesize ElevenLabs chunk {chunk_index + 1} "
-                f"(depth={depth}, chars={len(chunk_text)}). Excerpt: '{excerpt}'."
+                f"(depth={depth}, chars={len(chunk_text)}). Excerpt: '{excerpt}'. Cause: {error}"
             ) from error
 
         left_text, right_text = split_pair

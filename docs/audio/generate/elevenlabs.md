@@ -38,6 +38,23 @@ Voices are account-dependent. The wrapper accepts any voice id supplied through 
 
 ## Model Coverage
 
+### Model: `eleven_v4`
+
+Inherits the shared ElevenLabs parameter surface.
+
+- Supports `language_code`.
+- List price: 0.08 USD per 1,000 characters.
+
+### Model: `eleven_v4_turbo`
+
+Inherits the shared ElevenLabs parameter surface.
+
+- Supports `language_code`.
+- List price: 0.04 USD per 1,000 characters.
+- `speed` is accepted and has no effect: the same text came out with the same
+  duration at 0.8 and at 1.1.
+- Validated: yes, speech with timestamps on 2026-10-02.
+
 ### Model: `eleven_v3`
 
 Inherits the shared ElevenLabs parameter surface.
