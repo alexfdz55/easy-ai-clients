@@ -24,6 +24,29 @@ Default base URL: `https://openrouter.ai/api/v1`
 - Seedance 2.5: https://openrouter.ai/bytedance/seedance-2.5
 - Seedance 1.5 Pro: https://openrouter.ai/bytedance/seedance-1-5-pro
 
+### HeyGen Video 1
+
+`heygen/heygen-video-1` (2026-09-30) goes through the same route:
+https://openrouter.ai/heygen/heygen-video-1
+
+- First frame only. Durations 5 to 15 seconds, `480p` or `768p`, aspect ratios 21:9, 16:9,
+  4:3, 1:1, 3:4 and 9:16.
+- Every clip comes back with sound (dialogue, ambience, effects) and there is no audio
+  switch. The model card reports `generate_audio: false` and no passthrough parameters, and
+  OpenRouter answers 400 to a parameter the model does not support: the wrapper sends only
+  `prompt`, `frame_images`, `duration`, `resolution`, `aspect_ratio` and `seed`, and drops
+  `generate_audio` and any other keyword argument.
+- Cost comes from `usage.cost` on the finished job. List price 0.02 USD per second at 480p
+  and 0.03 at 768p; 50% off as a launch rate through October 2026.
+
+### `clamp_duration`
+
+By default the duration is truncated to a whole number and validated against the model's
+documented range: an out-of-range value raises. A caller that passes the length of a scene
+(5.6 seconds) can send `clamp_duration=True`: the duration is rounded **up** and brought
+inside the range (5.6 → 6; 3.2 → 5 and 22 → 15 on HeyGen Video 1). The flag is never sent
+to OpenRouter.
+
 ## Current Wrapper Default
 
 `bytedance/seedance-2.0-mini`
