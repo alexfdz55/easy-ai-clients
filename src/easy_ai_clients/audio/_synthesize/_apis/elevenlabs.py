@@ -148,7 +148,7 @@ def generate(
     text: str,
     model: str = "eleven_flash_v2_5",
     voice: str = DEFAULT_VOICE,
-    language_code: str = "en",
+    language_code: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Generate speech with ElevenLabs TTS. See `synthesize/docs/elevenlabs.md`."""
@@ -188,11 +188,18 @@ def generate(
     seed = options.pop("seed", 4_294_967_295)
     if seed is not None:
         seed = int(validate_number_range(seed, parameter_name="seed", provider="ElevenLabs", model=model, minimum=0, maximum=4_294_967_295))
-    language_code = normalize_language_code(language_code)
-
     api_key = ensure_env_var("ELEVENLABS_API_KEY")
     chunk_limit = compute_operational_char_limit(model_config["char_limit"])
-    resolved_language = resolve_language_code(language_code)
+    # No language is sent unless the caller names one. `language_code` ENFORCES a language
+    # for the model and for text normalization: a default of "en" made Eleven v4 Turbo read
+    # the digits of a Portuguese script in English ("Em 1959" -> "nineteen fifty-nine").
+    # Without it the model detects the language from the text, as Multilingual v2 always
+    # did (that model ignores the field, which is why the default went unnoticed).
+    resolved_language = (
+        resolve_language_code(normalize_language_code(language_code))
+        if str(language_code or "").strip()
+        else None
+    )
     text_chunks = chunk_text_for_provider(text, chunk_limit)
 
     voice_settings = {
@@ -358,7 +365,7 @@ def _request_tts(
     text: str,
     voice_id: str,
     model_id: str,
-    language_code: str,
+    language_code: str | None,
     voice_settings: Mapping[str, Any],
     apply_text_normalization: str,
     apply_language_text_normalization: bool,
@@ -384,7 +391,10 @@ def _request_tts(
         "apply_language_text_normalization": bool(apply_language_text_normalization),
         "use_pvc_as_ivc": bool(use_pvc_as_ivc),
     }
-    if DOCUMENTED_MODEL_METADATA.get(model_id, _UNKNOWN_MODEL_METADATA)["supports_language_code"]:
+    if (
+        language_code
+        and DOCUMENTED_MODEL_METADATA.get(model_id, _UNKNOWN_MODEL_METADATA)["supports_language_code"]
+    ):
         payload["language_code"] = language_code
     if seed is not None:
         payload["seed"] = int(seed)

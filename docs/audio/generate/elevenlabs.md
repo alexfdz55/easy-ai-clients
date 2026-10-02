@@ -4,7 +4,7 @@ Snapshot date: 2026-04-24.
 
 ## Overview
 
-ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_clients.audio.generate(..., api="elevenlabs")`; the provider adapter exposes `generate(text, model="eleven_flash_v2_5", voice="NndrHq4eUijN4wsQVtzW", language_code="en", **kwargs)`.
+ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_clients.audio.generate(..., api="elevenlabs")`; the provider adapter exposes `generate(text, model="eleven_flash_v2_5", voice="NndrHq4eUijN4wsQVtzW", language_code=None, **kwargs)`.
 
 - Signup/account: https://elevenlabs.io/app/sign-up
 - API key variable: `ELEVENLABS_API_KEY`
@@ -17,7 +17,11 @@ ElevenLabs speech synthesis is available through the public dispatcher `easy_ai_
 
 - Default model: `eleven_flash_v2_5`
 - Default voice: `NndrHq4eUijN4wsQVtzW`
-- Default language behavior: `language_code="en"` is forwarded only to models that support `language_code`.
+- Default language behavior: no `language_code` is sent unless the caller passes one, and
+  the model detects the language from the text. `language_code` ENFORCES a language for the
+  model and for text normalization, so a wrong one makes digits be read in that language
+  (a Portuguese "Em 1959" read as "nineteen fifty-nine" on Eleven v4 Turbo with `"en"`).
+  When passed, it is forwarded only to models that support it.
 - Lowest-cost default: Flash v2.5 with normal MP3 output, automatic text normalization, no premium extras.
 - Word timing source: native ElevenLabs character alignment from `/with-timestamps`.
 - Cost: characters of the text times the model's list price per character. It is an

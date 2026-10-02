@@ -150,6 +150,58 @@ def test_the_elevenlabs_cost_comes_from_the_text_not_from_the_credits_header(mon
     assert multilingual["cost_usd"] == pytest.approx(0.0608)
 
 
+def _captured_elevenlabs_payloads(monkeypatch, **generate_kwargs):
+    """What ElevenLabs would receive for one narration, without calling it."""
+    from easy_ai_clients import audio
+    from easy_ai_clients.audio._synthesize._apis import elevenlabs
+
+    sent = []
+
+    def fake_request(method, url, *, headers=None, params=None, json_body=None, timeout=None, **_):
+        sent.append(json_body)
+        raise RuntimeError("stop before the provider")
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    monkeypatch.setattr(elevenlabs, "request_with_retries", fake_request)
+    audio.generate("Em 1959, uma mulher apareceu morta.", api="elevenlabs", **generate_kwargs)
+    return sent
+
+
+def test_elevenlabs_sends_no_language_unless_the_caller_names_one(monkeypatch):
+    """`language_code` enforces a language for the model and for text normalization. The
+    wrapper used to default it to "en": Eleven v4 Turbo read the year of a Portuguese
+    script in English. Multilingual v2 ignores the field, so nobody had noticed."""
+    sent = _captured_elevenlabs_payloads(monkeypatch, model="eleven_v4_turbo", voice="v1")
+
+    assert sent, "the request never reached the transport"
+    assert "language_code" not in sent[0]
+
+
+def test_elevenlabs_enforces_the_language_the_caller_names(monkeypatch):
+    sent = _captured_elevenlabs_payloads(
+        monkeypatch, model="eleven_v4_turbo", voice="v1", language_code="pt-BR"
+    )
+
+    assert sent[0]["language_code"] == "pt"
+
+
+def test_falai_speech_sends_no_language_unless_the_caller_names_one(monkeypatch):
+    from easy_ai_clients import audio
+
+    captured = []
+    _patch_fal(monkeypatch, _fal_transport(captured, timestamps=HOLA_MUNDO))
+
+    result = audio.generate(
+        "Hola mundo.",
+        api="falai",
+        model="elevenlabs/tts/eleven-v4-turbo",
+        voice="15bJsujCI3tcDWeoZsQP",
+    )
+
+    assert "error" not in result
+    assert "language_code" not in captured[0][2]
+
+
 # --- fal.ai speech -----------------------------------------------------------------------
 
 

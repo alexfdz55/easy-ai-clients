@@ -62,7 +62,7 @@ def generate(
     text: str,
     model: str = DEFAULT_MODEL,
     voice: str = DEFAULT_VOICE,
-    language_code: str = "en",
+    language_code: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Generate speech through fal.ai's queue. See `docs/audio/generate/falai.md`."""
@@ -73,7 +73,13 @@ def generate(
     documented_model = model in DOCUMENTED_MODEL_METADATA
 
     api_key = ensure_env_var("FAL_KEY")
-    resolved_language = resolve_language_code(normalize_language_code(language_code))
+    # Como en ElevenLabs directo: sin idioma pedido no se manda ninguno, y el modelo lo
+    # detecta del texto. Un "en" por omisión hace leer en inglés las cifras de otro idioma.
+    resolved_language = (
+        resolve_language_code(normalize_language_code(language_code))
+        if str(language_code or "").strip()
+        else None
+    )
     text_chunks = chunk_text_for_provider(
         text, compute_operational_char_limit(model_config["char_limit"])
     )
@@ -87,8 +93,9 @@ def generate(
             "voice": voice,
             "timestamps": True,
             "output_format": output_format,
-            "language_code": resolved_language,
         }
+        if resolved_language:
+            payload["language_code"] = resolved_language
         payload.update({key: value for key, value in options.items() if value is not None})
         record, request_id, units = _generate_chunk(
             api_key=api_key,
