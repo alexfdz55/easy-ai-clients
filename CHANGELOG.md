@@ -3,6 +3,16 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.21.1 - 2026-10-03
+
+### Changed
+
+- Everything released as 0.19.5 to 0.19.7, which 0.21.0 did not include because
+  the two lines of work are released from different branches: Eleven v4 and
+  Eleven v4 Turbo are split into several requests at 4,000 characters instead of
+  2,200, and the words of a chunked narration no longer overlap at the join
+  between two chunks.
+
 ## 0.21.0 - 2026-10-02
 
 ### Added
