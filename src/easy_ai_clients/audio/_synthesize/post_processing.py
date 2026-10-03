@@ -146,14 +146,21 @@ def _finalize_synthesis_output(
             audio_duration_seconds=chunk_duration_seconds,
         )
 
-        projected_words.extend(
-            {
-                "word": word["word"],
-                "start": word["start"] + offset_seconds,
-                "end": word["end"] + offset_seconds,
-            }
-            for word in chunk_words
-        )
+        # A word cannot outlast the audio of its own chunk. Providers sometimes report the
+        # last word ending a little after the audio really does (2 ms on Multilingual v2,
+        # 80 ms on Eleven v4 Turbo). The next chunk starts exactly where this audio ends,
+        # so that overrun made its first word start before the previous one had finished,
+        # and callers that require non-overlapping words rejected the whole narration.
+        for word in chunk_words:
+            start = min(float(word["start"]), chunk_duration_seconds)
+            end = min(max(float(word["end"]), start), chunk_duration_seconds)
+            projected_words.append(
+                {
+                    "word": word["word"],
+                    "start": start + offset_seconds,
+                    "end": end + offset_seconds,
+                }
+            )
         final_audio += chunk_audio
         offset_seconds += chunk_duration_seconds
 

@@ -51,6 +51,38 @@ The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   take (free on Kie), and V6 generations accept `persona_id` with
   `persona_model` (`voice_persona` or `style_persona`) to keep the same voice.
   V5_5 rejects personas with `ValueError`.
+## 0.19.7 - 2026-10-03
+
+### Changed
+
+- Eleven v4 and Eleven v4 Turbo are split at 4,000 characters instead of 4,200: a
+  1,000-character margin under their limit, a little below the 4,178 measured in one
+  request, to stay on the safe side.
+
+## 0.19.6 - 2026-10-03
+
+### Changed
+
+- Eleven v4 and Eleven v4 Turbo are split into several requests at 4,200 characters
+  instead of 2,200. The generic rule (`compute_operational_char_limit`) cut every model
+  with a 5,000-character limit at 2,200, so a narration of two and a half minutes was
+  already recorded in two requests, with a join in the middle. A model can now declare
+  its own `operational_char_limit`; these two use their limit minus the same
+  800-character margin the generic rule keeps. Measured on v4 Turbo: 4,178 characters in
+  one request took 55 s, against a 120 s request timeout, with complete word timings and
+  the same pace as the two-request recording. Every other model is cut where it was.
+
+## 0.19.5 - 2026-10-03
+
+### Fixed
+
+- The words of a chunked narration no longer overlap at the join between two chunks. A
+  long text is synthesized in several requests and the words of each chunk are shifted by
+  the duration of the audio before them. ElevenLabs sometimes reports the last word of a
+  chunk ending slightly after that chunk's audio really ends (2 ms on Multilingual v2,
+  80 ms on Eleven v4 Turbo): the first word of the next chunk then started before the
+  previous one had finished, and callers that require non-overlapping words rejected the
+  whole narration. A word now never outlasts the audio of its own chunk.
 
 ## 0.19.4 - 2026-10-02
 
