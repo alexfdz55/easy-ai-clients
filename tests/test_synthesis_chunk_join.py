@@ -98,13 +98,14 @@ def _chunk_sizes(monkeypatch, model: str, characters: int) -> list[int]:
 def test_eleven_v4_and_v4_turbo_take_a_long_narration_in_one_request(monkeypatch) -> None:
     """The generic rule cut a 5,000-character model at 2,200: a narration of two and a half
     minutes was recorded in two requests, with a join in the middle. A whole request of
-    4,178 characters on Eleven v4 Turbo took 55 s, well inside the 120 s timeout."""
+    4,178 characters on Eleven v4 Turbo took 55 s, well inside the 120 s timeout; the cut
+    sits a little below that, at 4,000."""
     for model in ("eleven_v4", "eleven_v4_turbo"):
         assert len(_chunk_sizes(monkeypatch, model, 3732)) == 1
-        assert len(_chunk_sizes(monkeypatch, model, 4200)) == 1
-        beyond = _chunk_sizes(monkeypatch, model, 4600)
+        assert len(_chunk_sizes(monkeypatch, model, 4000)) == 1
+        beyond = _chunk_sizes(monkeypatch, model, 4400)
         assert len(beyond) == 2
-        assert max(beyond) <= 4200
+        assert max(beyond) <= 4000
 
 
 def test_the_other_elevenlabs_models_are_cut_where_they_were(monkeypatch) -> None:

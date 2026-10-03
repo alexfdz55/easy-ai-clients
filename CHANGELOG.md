@@ -3,6 +3,14 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.7 - 2026-10-03
+
+### Changed
+
+- Eleven v4 and Eleven v4 Turbo are split at 4,000 characters instead of 4,200: a
+  1,000-character margin under their limit, a little below the 4,178 measured in one
+  request, to stay on the safe side.
+
 ## 0.19.6 - 2026-10-03
 
 ### Changed

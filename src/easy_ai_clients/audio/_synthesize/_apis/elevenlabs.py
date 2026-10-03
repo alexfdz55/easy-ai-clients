@@ -44,18 +44,18 @@ PRICING_URL = "https://elevenlabs.io/pricing/api/"
 # every join is a place where the voice can change and the word timings have to be stitched.
 # Eleven v4 and v4 Turbo take a whole request close to their limit in under a minute
 # (measured on v4 Turbo: 4,178 characters in one request took 55 s, against a 120 s
-# request timeout), so they
-# are cut at their limit minus the same 800-character margin the generic rule keeps.
+# request timeout). They are cut at 4,000: a 1,000-character margin under the limit, a
+# little below what was measured, to stay on the safe side.
 DOCUMENTED_MODEL_METADATA = {
     "eleven_v4": {
         "char_limit": 5000,
-        "operational_char_limit": 4200,
+        "operational_char_limit": 4000,
         "usd_per_million_chars": 80.0,
         "supports_language_code": True,
     },
     "eleven_v4_turbo": {
         "char_limit": 5000,
-        "operational_char_limit": 4200,
+        "operational_char_limit": 4000,
         "usd_per_million_chars": 40.0,
         "supports_language_code": True,
     },
