@@ -70,3 +70,45 @@ def test_chunks_whose_alignment_fits_the_audio_are_left_as_they_came() -> None:
 
     assert words[1]["end"] == 700
     assert (words[2]["start"], words[2]["end"]) == (1000, 1400)
+
+
+def _chunk_sizes(monkeypatch, model: str, characters: int) -> list[int]:
+    """How many characters each ElevenLabs request would carry, without calling it."""
+    from easy_ai_clients.audio._synthesize._apis import elevenlabs
+
+    sizes: list[int] = []
+
+    def fake_chunk(*args, chunk_text, **kwargs):
+        sizes.append(len(chunk_text))
+        return [{"character_cost": 0, "request_id": f"tts-{len(sizes)}"}]
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    monkeypatch.setattr(elevenlabs, "_generate_chunk", fake_chunk)
+    monkeypatch.setattr(
+        elevenlabs,
+        "_finalize_synthesis_output",
+        lambda records, cost_usd: {"cost_usd": cost_usd, "cost_details": {}, "audio": object(), "words": {}},
+    )
+    sentence = "Una frase cualquiera de la narración. "
+    text = (sentence * (characters // len(sentence) + 1))[:characters].rstrip()
+    elevenlabs.generate(text, model=model, voice="v1")
+    return sizes
+
+
+def test_eleven_v4_and_v4_turbo_take_a_long_narration_in_one_request(monkeypatch) -> None:
+    """The generic rule cut a 5,000-character model at 2,200: a narration of two and a half
+    minutes was recorded in two requests, with a join in the middle. A whole request of
+    4,178 characters on Eleven v4 Turbo took 55 s, well inside the 120 s timeout."""
+    for model in ("eleven_v4", "eleven_v4_turbo"):
+        assert len(_chunk_sizes(monkeypatch, model, 3732)) == 1
+        assert len(_chunk_sizes(monkeypatch, model, 4200)) == 1
+        beyond = _chunk_sizes(monkeypatch, model, 4600)
+        assert len(beyond) == 2
+        assert max(beyond) <= 4200
+
+
+def test_the_other_elevenlabs_models_are_cut_where_they_were(monkeypatch) -> None:
+    assert len(_chunk_sizes(monkeypatch, "eleven_v3", 2200)) == 1
+    assert len(_chunk_sizes(monkeypatch, "eleven_v3", 2300)) == 2
+    assert len(_chunk_sizes(monkeypatch, "eleven_multilingual_v2", 3200)) == 1
+    assert len(_chunk_sizes(monkeypatch, "eleven_multilingual_v2", 3300)) == 2

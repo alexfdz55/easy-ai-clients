@@ -38,14 +38,24 @@ MODELS_URL = "https://elevenlabs.io/docs/api-reference/text-to-speech/convert-wi
 CATALOG_URL = "https://elevenlabs.io/docs/api-reference/models/get-all"
 PRICING_URL = "https://elevenlabs.io/pricing/api/"
 
+# `operational_char_limit` is where a text is split into several requests. Without it the
+# generic rule applies (`compute_operational_char_limit`), which cuts a 5,000-character model
+# at 2,200: a narration of two and a half minutes was already recorded in two requests, and
+# every join is a place where the voice can change and the word timings have to be stitched.
+# Eleven v4 and v4 Turbo take a whole request close to their limit in under a minute
+# (measured on v4 Turbo: 4,178 characters in one request took 55 s, against a 120 s
+# request timeout), so they
+# are cut at their limit minus the same 800-character margin the generic rule keeps.
 DOCUMENTED_MODEL_METADATA = {
     "eleven_v4": {
         "char_limit": 5000,
+        "operational_char_limit": 4200,
         "usd_per_million_chars": 80.0,
         "supports_language_code": True,
     },
     "eleven_v4_turbo": {
         "char_limit": 5000,
+        "operational_char_limit": 4200,
         "usd_per_million_chars": 40.0,
         "supports_language_code": True,
     },
@@ -189,7 +199,10 @@ def generate(
     if seed is not None:
         seed = int(validate_number_range(seed, parameter_name="seed", provider="ElevenLabs", model=model, minimum=0, maximum=4_294_967_295))
     api_key = ensure_env_var("ELEVENLABS_API_KEY")
-    chunk_limit = compute_operational_char_limit(model_config["char_limit"])
+    chunk_limit = int(
+        model_config.get("operational_char_limit")
+        or compute_operational_char_limit(model_config["char_limit"])
+    )
     # No language is sent unless the caller names one. `language_code` ENFORCES a language
     # for the model and for text normalization: a default of "en" made Eleven v4 Turbo read
     # the digits of a Portuguese script in English ("Em 1959" -> "nineteen fifty-nine").
