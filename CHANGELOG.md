@@ -3,6 +3,18 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.5 - 2026-10-03
+
+### Fixed
+
+- The words of a chunked narration no longer overlap at the join between two chunks. A
+  long text is synthesized in several requests and the words of each chunk are shifted by
+  the duration of the audio before them. ElevenLabs sometimes reports the last word of a
+  chunk ending slightly after that chunk's audio really ends (2 ms on Multilingual v2,
+  80 ms on Eleven v4 Turbo): the first word of the next chunk then started before the
+  previous one had finished, and callers that require non-overlapping words rejected the
+  whole narration. A word now never outlasts the audio of its own chunk.
+
 ## 0.19.4 - 2026-10-02
 
 ### Fixed
