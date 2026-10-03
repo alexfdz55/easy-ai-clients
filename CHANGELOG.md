@@ -3,6 +3,19 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.6 - 2026-10-03
+
+### Changed
+
+- Eleven v4 and Eleven v4 Turbo are split into several requests at 4,200 characters
+  instead of 2,200. The generic rule (`compute_operational_char_limit`) cut every model
+  with a 5,000-character limit at 2,200, so a narration of two and a half minutes was
+  already recorded in two requests, with a join in the middle. A model can now declare
+  its own `operational_char_limit`; these two use their limit minus the same
+  800-character margin the generic rule keeps. Measured on v4 Turbo: 4,178 characters in
+  one request took 55 s, against a 120 s request timeout, with complete word timings and
+  the same pace as the two-request recording. Every other model is cut where it was.
+
 ## 0.19.5 - 2026-10-03
 
 ### Fixed
