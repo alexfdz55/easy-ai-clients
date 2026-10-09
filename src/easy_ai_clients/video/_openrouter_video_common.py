@@ -34,6 +34,7 @@ MODEL_2_0 = "bytedance/seedance-2.0"
 MODEL_2_5 = "bytedance/seedance-2.5"
 MODEL_1_5_PRO = "bytedance/seedance-1-5-pro"
 MODEL_HEYGEN_VIDEO_1 = "heygen/heygen-video-1"
+MODEL_HEYGEN_AVATAR_IV = "heygen/avatar-iv"
 
 DOCUMENTED_MODELS: dict[str, dict[str, Any]] = {
     MODEL_2_0_MINI: {
@@ -89,6 +90,32 @@ DOCUMENTED_MODELS: dict[str, dict[str, Any]] = {
         "default_resolution": "768p",
         "accepts_generate_audio": False,
         "passthrough_parameters": (),
+    },
+    # HeyGen Avatar IV (2026-10-09): one photo lip-synced to a supplied audio track, or to a
+    # script HeyGen voices. The photo and the audio travel as `input_references` and HeyGen
+    # downloads both, so they must be public URLs whose content type matches the file (a
+    # PNG served as `image/webp` is rejected). The clip lasts as long as the audio: there
+    # is no duration parameter. Its own options, the motion instruction among them, travel
+    # under `provider.options.heygen`. Avatar models are told apart by `provider_slug`.
+    MODEL_HEYGEN_AVATAR_IV: {
+        "family": "heygen-avatar-iv",
+        "resolutions": ("720p", "1080p"),
+        "aspect_ratios": ("16:9", "9:16", "1:1"),
+        "default_resolution": "720p",
+        "accepts_generate_audio": False,
+        "provider_slug": "heygen",
+        "motion_parameter": "motion_prompt",
+        "passthrough_parameters": (
+            "voice_id",
+            "voice_settings",
+            "motion_prompt",
+            "expressiveness",
+            "fit",
+            "remove_background",
+            "background",
+            "caption",
+            "title",
+        ),
     },
 }
 
@@ -549,6 +576,64 @@ def build_generation_payload(
     return merge_extra_payload(payload, kwargs)
 
 
+def build_avatar_payload(
+    *,
+    model: str,
+    image: str | None,
+    audio: str | None,
+    text: Any,
+    kwargs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Payload of an avatar model: one photo and the audio track it lip-syncs to.
+
+    With an audio track, `text` is the motion instruction and goes to the provider option
+    the model declares for it; `prompt` is not sent, because for these models it is the
+    script the provider voices. Without an audio track, `text` is that script and the
+    motion instruction has to come as its own keyword argument.
+    """
+    meta = DOCUMENTED_MODELS.get(model) or {}
+    slug = meta.get("provider_slug")
+    if not slug:
+        documented = sorted(name for name, item in DOCUMENTED_MODELS.items() if item.get("provider_slug"))
+        raise ValueError(
+            f"OpenRouter avatar video does not document model `{model}`. "
+            f"Documented avatar models: {', '.join(documented)}."
+        )
+    if not image:
+        raise ValueError("OpenRouter avatar video requires image_url.")
+    spoken = _content_prompt(text, required=False)
+    if not audio and not spoken:
+        raise ValueError("OpenRouter avatar video requires audio_url or text to voice.")
+
+    payload: dict[str, Any] = {"model": model}
+    if not audio:
+        payload["prompt"] = spoken
+    if kwargs.get("resolution") is not None:
+        resolution = _normalize_resolution(kwargs.get("resolution"))
+        _validate_resolution(model, resolution)
+        payload["resolution"] = resolution
+    aspect = str(kwargs.get("aspect_ratio", kwargs.get("ratio")) or "").strip()
+    if aspect and aspect.lower() not in {"auto", "adaptive"}:
+        _validate_aspect_ratio(model, aspect)
+        payload["aspect_ratio"] = aspect
+    references = [_reference_item(image, "image_url")]
+    if audio:
+        references.append(_reference_item(audio, "audio_url"))
+    payload["input_references"] = references
+
+    options = {
+        key: kwargs[key]
+        for key in meta.get("passthrough_parameters") or ()
+        if kwargs.get(key) is not None
+    }
+    motion_parameter = meta.get("motion_parameter")
+    if audio and spoken and motion_parameter:
+        options.setdefault(motion_parameter, spoken)
+    if options:
+        payload["provider"] = {"options": {slug: options}}
+    return merge_extra_payload(payload, kwargs)
+
+
 def build_result(
     *,
     model: str,
@@ -725,6 +810,7 @@ __all__ = [
     "ENV_NAME",
     "PROVIDER",
     "async_refs",
+    "build_avatar_payload",
     "build_generation_payload",
     "build_result",
     "create_job",

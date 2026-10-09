@@ -247,6 +247,7 @@ requires `output_path`.
 | `falai` | `FAL_KEY` | [`falai`](video/avatar_video/falai.md) |
 | `hedra` | `HEDRA_API_KEY` | [`hedra`](video/avatar_video/hedra.md) |
 | `heygen` | `HEYGEN_KEY` | [`heygen`](video/avatar_video/heygen.md) |
+| `openrouter` | `OPENROUTER_API_KEY` | [`openrouter`](video/avatar_video/openrouter.md) |
 | `replicate` | `REPLICATE_API_TOKEN` | [`replicate`](video/avatar_video/replicate.md) |
 | `runway` | `RUNWAYML_API_SECRET` | [`runway`](video/avatar_video/runway.md) |
 
