@@ -3,7 +3,7 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 0.21.2 - 2026-10-09
 
 ### Added
 
