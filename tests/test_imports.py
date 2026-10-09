@@ -165,7 +165,7 @@ def test_video_dispatchers_callable():
             "byteplus", "falai", "google", "hedra", "runway", "together", "xai",
         )),
         ("video", "_motion_control._apis", ("falai", "hedra", "runway")),
-        ("video", "_avatar_video._apis", ("falai", "hedra", "heygen", "replicate", "runway")),
+        ("video", "_avatar_video._apis", ("falai", "hedra", "heygen", "openrouter", "replicate", "runway")),
         ("video", "_video_with_audio._apis", ("hedra", "runway", "together")),
         ("video", "_create_avatar._apis", ("heygen", "runway")),
         ("video", "_image_lipsync._apis", ("falai", "heygen")),

@@ -3,6 +3,19 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `video.avatar_video(..., api="openrouter")`: OpenRouter's avatar models, starting with
+  `heygen/avatar-iv` (0.05 USD per second). One photo is lip-synced to a supplied audio
+  track and the clip lasts as long as the audio. With an audio track, `text` is the motion
+  instruction, sent as HeyGen's `motion_prompt` under `provider.options.heygen`; without
+  one, `text` is the script HeyGen voices. The photo and the audio have to be public URLs,
+  because the provider downloads them: local paths and data URLs raise `ValueError`. Cost
+  comes from `usage.cost` on the finished job. See `docs/video/avatar_video/openrouter.md`.
+  Already released on the 0.19 line as 0.19.8; this brings it to the 0.21 line.
+
 ## 0.21.1 - 2026-10-03
 
 ### Changed
