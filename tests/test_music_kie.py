@@ -341,6 +341,31 @@ def _no_network(*args, **kwargs):
     raise AssertionError("network")
 
 
+def test_v6_composes_an_instrumental_without_lyrics(kie_module, monkeypatch):
+    """Una muestra de género para escuchar, sin voz (Jaymaker, spec 108 §3)."""
+    captured = {}
+
+    def fake_request_json(method, url, headers=None, json_payload=None, params=None, timeout=None):
+        captured.update(payload=json_payload)
+        return {"code": 200, "data": {"taskId": "task-inst"}}
+
+    monkeypatch.setattr(kie_module, "request_json", fake_request_json)
+    kie_module.generate(
+        "", model="V6", prompt=STYLE_TAGS, duration=15, title="Pop sample", instrumental=True
+    )
+
+    task_input = captured["payload"]["input"]
+    assert task_input["instrumental"] is True
+    assert task_input["lyrics"] == ""
+    assert task_input["title"] == "Pop sample"
+
+
+def test_an_instrumental_needs_a_title(kie_module, monkeypatch):
+    monkeypatch.setattr(kie_module, "request_json", lambda *args, **kwargs: {})
+    with pytest.raises(ValueError, match="title"):
+        kie_module.generate("", model="V6", prompt=STYLE_TAGS, instrumental=True)
+
+
 def test_v6_sends_the_jobs_payload_with_real_duration(kie_module, monkeypatch):
     captured = {}
 

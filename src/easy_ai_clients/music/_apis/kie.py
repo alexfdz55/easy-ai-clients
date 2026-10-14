@@ -94,6 +94,8 @@ def generate(lyrics, model="V5_5", **kwargs):
             - `gender`: Local `"male"` / `"female"` mapped to the vocal gender
               `m` / `f`. `"both"` is omitted.
             - `persona_id`: V6 only. Persona or custom voice ID to apply.
+            - `instrumental`: V6 only. `True` composes without vocals: `lyrics` may be
+              empty and `title` is required.
             - `persona_model`: V6 only, required with `persona_id`:
               `"voice_persona"` keeps the voice and lets the style change;
               `"style_persona"` keeps the style.
@@ -335,8 +337,14 @@ def create_persona(
 def _generate_jobs(lyrics, model, style, duration, kwargs):
     """V6 por la API de tareas: letra en `lyrics`, duración real y persona opcional."""
     reject_unknown_kwargs(
-        kwargs, {"title", "gender", "webhook_url", "negative_tags", "persona_id", "persona_model"}
+        kwargs,
+        {"title", "gender", "webhook_url", "negative_tags", "persona_id", "persona_model",
+         "instrumental"},
     )
+    instrumental = bool(kwargs.pop("instrumental", False))
+    if instrumental and not str(kwargs.get("title") or "").strip():
+        # Sin letra, el título saldría «Untitled»: una muestra se nombra a propósito.
+        raise ValueError("title is required for an instrumental")
     gender = kwargs.pop("gender", None)
     negative_tags = _clean_negative_tags(kwargs.pop("negative_tags", None))
     title = _title_from_lyrics(lyrics, kwargs.pop("title", None))
@@ -348,7 +356,7 @@ def _generate_jobs(lyrics, model, style, duration, kwargs):
 
     task_input = {
         "custom_mode": True,
-        "instrumental": False,
+        "instrumental": instrumental,
         "model": model,
         "title": title,
         "style": style,
