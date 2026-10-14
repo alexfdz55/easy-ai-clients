@@ -3,6 +3,16 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.21.3 - 2026-10-14
+
+### Added
+
+- `music.generate(..., style_lead=...)`: free text placed before the rendered style prompt (or
+  the caller prompt), for a direction that must outweigh the preset. `style_notes` goes at the
+  end, where the provider weighs it least and a style that is too long gets cut. Measured with
+  Kie V6 and the `cinematic_epic` preset: asking for the voice at 0:00 at the end of the style
+  gave a 3.3 s intro; asking first, with an a cappella first line, gave 0.8 s and 1.0 s.
+
 ## 0.21.2 - 2026-10-09
 
 ### Added
