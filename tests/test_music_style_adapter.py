@@ -595,6 +595,30 @@ def test_style_notes_are_appended_to_the_rendered_prompt():
     assert request["kwargs"]["prompt"] == "dreamy pop, short"
 
 
+def test_style_lead_goes_before_the_rendered_prompt():
+    """A direction that must outweigh the preset goes first: providers weigh the start of the
+    style the most. Jaymaker asked for the voice at 0:00 at the end and got a 3 s intro."""
+    from easy_ai_clients.music._style_adapter import build_generation_request
+
+    request = build_generation_request(
+        "kie",
+        "V6",
+        "la la",
+        style="cinematic_epic",
+        kwargs={"style_lead": "starts a cappella", "style_notes": "no outro"},
+    )
+    prompt = request["kwargs"]["prompt"]
+    assert prompt.startswith("starts a cappella, cinematic epic")
+    assert prompt.endswith(", no outro")
+    assert "style_lead" not in request["kwargs"]
+
+    request = build_generation_request("kie", "V5_5", "la la", prompt="dreamy pop", kwargs={"style_lead": "a cappella"})
+    assert request["kwargs"]["prompt"] == "a cappella, dreamy pop"
+
+    request = build_generation_request("kie", "V5_5", "la la", prompt="  ", kwargs={"style_lead": "a cappella"})
+    assert request["kwargs"]["prompt"] == "a cappella"
+
+
 
 # Inline presets: a caller that keeps its own genre catalog passes the whole preset instead of a
 # file name (Jaymaker stores its genres in its database).
