@@ -26,7 +26,11 @@ from .._apis._shared import (
     request_with_retries,
     response_json,
 )
-from ..post_processing import _finalize_synthesis_output, build_chunk_record
+from ..post_processing import (
+    _finalize_synthesis_output,
+    build_chunk_record,
+    realign_chunks_that_miss_pauses,
+)
 from ..pre_processing import (
     chunk_text_for_provider,
     compute_operational_char_limit,
@@ -120,12 +124,22 @@ def generate(
         characters=sum(len(chunk) for chunk in text_chunks),
         usd_per_million_chars=model_config["usd_per_million_chars"],
     )
+    # The same check as on ElevenLabs direct: timings that miss the pauses are realigned.
+    alignment_usd, alignment_warnings = realign_chunks_that_miss_pauses(
+        chunk_records, language=resolved_language
+    )
     result = _finalize_synthesis_output(chunk_records, cost_usd=cost["cost_usd"])
     result.update(cost)
     result["provider"] = "falai"
     result["model"] = model
+    if alignment_usd:
+        result["cost_usd"] = round(float(result.get("cost_usd") or 0.0) + alignment_usd, 6)
+        result["cost_details"] = {**(result.get("cost_details") or {}), "alignment_usd": alignment_usd}
+    warnings = list(alignment_warnings)
     if not documented_model and not cost["cost_usd"]:
-        result["warnings"] = f"No documented pricing metadata is available for fal.ai model `{model}`."
+        warnings.append(f"No documented pricing metadata is available for fal.ai model `{model}`.")
+    if warnings:
+        result["warnings"] = " ".join(warnings)
     if request_ids:
         # One request per chunk: the first identifies the synthesis, all of them are kept.
         result["request_id"] = request_ids[0]

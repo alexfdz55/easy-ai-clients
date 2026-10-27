@@ -20,7 +20,11 @@ from .._apis._shared import (
     validate_choice,
     validate_number_range,
 )
-from ..post_processing import _finalize_synthesis_output, build_chunk_record
+from ..post_processing import (
+    _finalize_synthesis_output,
+    build_chunk_record,
+    realign_chunks_that_miss_pauses,
+)
 from ..pre_processing import (
     chunk_text_for_provider,
     compute_operational_char_limit,
@@ -279,13 +283,23 @@ def generate(
     # Pricing those credits as characters reported a fraction of the real cost.
     characters = sum(len(chunk_text) for chunk_text in text_chunks)
     cost_usd = round((characters / 1_000_000.0) * model_config["usd_per_million_chars"], 6)
+    # The timings ElevenLabs returns are checked against each chunk's audio, and realigned
+    # when they miss its pauses (`realign_chunks_that_miss_pauses`).
+    alignment_usd, alignment_warnings = realign_chunks_that_miss_pauses(
+        chunk_records, language=resolved_language
+    )
     result = _finalize_synthesis_output(
         chunk_records,
-        cost_usd=cost_usd if documented_model else 0.0,
+        cost_usd=(cost_usd if documented_model else 0.0) + alignment_usd,
     )
     result["cost_details"] = {"characters": characters, "provider_credits": provider_credits}
+    if alignment_usd:
+        result["cost_details"]["alignment_usd"] = alignment_usd
+    warnings = list(alignment_warnings)
     if not documented_model:
-        result["warnings"] = f"No documented pricing metadata is available for ElevenLabs model `{model}`."
+        warnings.append(f"No documented pricing metadata is available for ElevenLabs model `{model}`.")
+    if warnings:
+        result["warnings"] = " ".join(warnings)
     if request_ids:
         # One request per chunk: the first identifies the synthesis, all of them are kept.
         result["request_id"] = request_ids[0]

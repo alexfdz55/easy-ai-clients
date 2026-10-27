@@ -58,6 +58,16 @@ JOIN_SILENCE_BELOW_SPEECH_DB = 15.0
 # median measured on Eleven v4 Turbo on 2026-10-27, rounded down.
 DEFAULT_JOIN_PAUSE_MS = {"sentence": 600, "clause": 250}
 JOIN_PAUSE_LIMITS_MS = (150, 1200)
+# Provider word timings are checked against the audio: after every pause of 300 ms or more,
+# some word has to start where the voice comes back (within 0.2 s). Right timings meet it at
+# every pause (8 recordings, 2026-10-27). An Eleven v4 Turbo request that day met it at 23
+# of 43 pauses: the word after each pause was placed about 0.9 s early, inside the silence,
+# and the subtitles and scene cuts of the video ran ahead of the voice. A chunk that misses
+# it is realigned against its own audio.
+ALIGNMENT_PAUSE_MS = 300
+ALIGNMENT_ONSET_TOLERANCE_SECONDS = 0.2
+ALIGNMENT_MIN_PAUSES = 4
+ALIGNMENT_MIN_MATCH = 0.85
 _SENTENCE_END = frozenset(".!?…")
 _CLAUSE_END = frozenset(",;:")
 _CLOSING_CHARACTERS = "\"'»”’)]}"
@@ -291,6 +301,104 @@ def _silent_run_ms(silent: list[bool] | None, frame: int) -> int:
     return (last - first + 1) * JOIN_PAUSE_FRAME_MS
 
 
+def pause_onsets_matched(audio: AudioSegment, words: list[Mapping[str, Any]]) -> tuple[int, int] | None:
+    """How many of the audio's inner pauses have a word starting where the voice comes back,
+    out of how many pauses. None when there are too few pauses to judge."""
+    silent = _silent_frames(audio)
+    if silent is None:
+        return None
+    min_frames = ALIGNMENT_PAUSE_MS // JOIN_PAUSE_FRAME_MS
+    resumes: list[float] = []
+    index = 0
+    while index < len(silent):
+        if not silent[index]:
+            index += 1
+            continue
+        end = index
+        while end < len(silent) and silent[end]:
+            end += 1
+        # The silence before the first word and after the last one are not pauses.
+        if end - index >= min_frames and index > 0 and end < len(silent):
+            resumes.append(end * JOIN_PAUSE_FRAME_MS / 1000.0)
+        index = end
+    if len(resumes) < ALIGNMENT_MIN_PAUSES:
+        return None
+    starts = [float(word["start"]) for word in words]
+    matched = sum(
+        1
+        for resume in resumes
+        if any(abs(start - resume) <= ALIGNMENT_ONSET_TOLERANCE_SECONDS for start in starts)
+    )
+    return matched, len(resumes)
+
+
+def realign_chunks_that_miss_pauses(
+    chunks: list[dict[str, Any]],
+    *,
+    language: str | None = None,
+) -> tuple[float, list[str]]:
+    """Check each chunk's provider timings against its audio and, when they miss the pauses,
+    replace them with an alignment of the audio itself (Deepgram). Returns what the
+    realignment cost and the warnings for the chunks that could not be fixed, which keep
+    the provider timings."""
+    cost_usd = 0.0
+    warnings: list[str] = []
+    for position, chunk in enumerate(chunks, 1):
+        if not _has_provider_timings(chunk):
+            continue
+        try:
+            audio = _decode_chunk_audio(chunk)
+        except Exception:  # noqa: BLE001 - joining the chunks decodes it again and says why
+            continue
+        duration_seconds = len(audio) / 1000.0
+        provider_words = _extract_chunk_observed_words(chunk, audio_duration_seconds=duration_seconds)
+        check = pause_onsets_matched(audio, provider_words)
+        if check is None or check[0] >= ALIGNMENT_MIN_MATCH * check[1]:
+            continue
+        try:
+            observed_words, alignment_cost = align_synthesized_audio_with_deepgram(
+                _chunk_audio_bytes(chunk),
+                original_text=str(chunk.get("text") or ""),
+                language=language,
+            )
+        except Exception as error:  # noqa: BLE001 - the recording is paid: keep it, say why
+            warnings.append(
+                f"Chunk {position}: the provider word timings miss {check[1] - check[0]} of "
+                f"{check[1]} pauses and the realignment failed ({error}); they were kept."
+            )
+            logger.warning(warnings[-1])
+            continue
+        cost_usd += alignment_cost
+        realigned = pause_onsets_matched(audio, observed_words)
+        if realigned is not None and realigned[0] <= check[0]:
+            warnings.append(
+                f"Chunk {position}: the provider word timings miss {check[1] - check[0]} of "
+                f"{check[1]} pauses and the realignment did not do better; they were kept."
+            )
+            logger.warning(warnings[-1])
+            continue
+        chunk.pop("char_alignment", None)
+        chunk.pop("timing_events", None)
+        chunk["observed_words"] = observed_words
+        logger.info(
+            "synthesis chunk %s realigned: provider timings matched %s of %s pauses, the "
+            "realignment %s",
+            position,
+            check[0],
+            check[1],
+            f"{realigned[0]} of {realigned[1]}" if realigned else "could not be checked",
+        )
+    return round(cost_usd, 6), warnings
+
+
+def _chunk_audio_bytes(chunk: Mapping[str, Any]) -> bytes:
+    if chunk.get("audio_bytes"):
+        return bytes(chunk["audio_bytes"])
+    if chunk.get("audio_base64"):
+        return decode_base64_bytes(chunk["audio_base64"])
+    raise ValueError("Chunk did not include audio_bytes or audio_base64.")
+
+
 def _median(values: list[int]) -> float:
     ordered = sorted(values)
     middle = len(ordered) // 2
@@ -318,6 +426,11 @@ def _join_pause_padding_ms(decoded: list[Mapping[str, Any]]) -> list[int]:
                 continue
             middle_ms = (float(current["end"]) + float(following["start"])) * 500.0
             run = _silent_run_ms(frames, int(middle_ms // JOIN_PAUSE_FRAME_MS))
+            if not run:
+                # Realigned timings leave no gap between words: the pause sits just before
+                # the next word starts.
+                before_ms = float(following["start"]) * 1000.0 - 2 * JOIN_PAUSE_FRAME_MS
+                run = _silent_run_ms(frames, int(before_ms // JOIN_PAUSE_FRAME_MS))
             if run:
                 measured[kind].append(run)
 
@@ -865,5 +978,7 @@ __all__ = [
     "align_synthesized_audio_with_deepgram",
     "build_aligned_chunk_record",
     "build_chunk_record",
+    "pause_onsets_matched",
+    "realign_chunks_that_miss_pauses",
     "_finalize_synthesis_output",
 ]

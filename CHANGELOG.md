@@ -3,6 +3,27 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Speech synthesis on ElevenLabs (direct and through fal.ai): word timings that miss the
+  pauses of their own audio are realigned. On 2026-10-27 an Eleven v4 Turbo request returned
+  timings that put the word after each pause about 0.9 s early, inside the silence, and the
+  subtitles and scene cuts of a 6-minute video ran ahead of the voice.
+  - Right timings have a word starting where the voice comes back after every pause of 300 ms
+    or more (within 0.2 s): 8 of 8 recordings checked. That request met it at 23 of 43 pauses.
+    In production, 1 of 119 narrations of the last 30 days missed it.
+  - A chunk under 85 % (with 4 pauses or more) is realigned against its own audio with
+    Deepgram (`align_synthesized_audio_with_deepgram`). Its cost goes into `cost_usd` and
+    `cost_details.alignment_usd`.
+  - If the realignment fails or does no better, the provider timings are kept and
+    `warnings` says why. Audio that cannot be decoded is left to the join, which says why.
+  - Tried on the same 6-minute narration: the second request missed the pauses again and was
+    realigned. The whole narration went to 118 of 118 pauses.
+- The pause added at a join is also measured when the words leave no gap between them, as
+  realigned timings do.
+
 ## 0.21.4 - 2026-10-27
 
 ### Added

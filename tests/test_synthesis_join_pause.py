@@ -118,6 +118,20 @@ def test_a_join_after_a_comma_aims_for_the_pause_after_a_comma() -> None:
     assert len(result["audio"]) == first_length + (300 - 20 - 30) + 30 + 500
 
 
+def test_the_pause_is_measured_also_when_the_words_leave_no_gap() -> None:
+    # Realigned timings (Deepgram) run each word up to the next one: «dos.» ends where «Tres»
+    # starts, at the end of the 700 ms pause.
+    first = _chunk(
+        "Uno dos. Tres cuatro.",
+        [("voice", 500), ("silence", 700), ("voice", 500), ("silence", 50)],
+        [("Uno", 0, 250), ("dos.", 250, 1200), ("Tres", 1200, 1450), ("cuatro.", 1450, 1700)],
+    )
+
+    result = _finalize_synthesis_output([first, _one_sentence()], cost_usd=0.0)
+
+    assert len(result["audio"]) == 1750 + (700 - 50 - 150) + 650
+
+
 def test_a_single_chunk_is_left_as_it_came() -> None:
     result = _finalize_synthesis_output([_two_sentences()], cost_usd=0.0)
 
