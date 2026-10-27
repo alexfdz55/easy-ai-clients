@@ -3,6 +3,26 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Speech synthesis in several chunks: the join keeps the pause the voice makes inside its
+  chunks. Providers return each chunk with very little silence around it, so the next
+  sentence started at a third of a normal pause. Measured on 2026-10-27 with Eleven v4
+  Turbo: 180 to 350 ms at the join, against 530 to 720 ms between sentences inside a
+  chunk. Sending the provider the previous request and the next text did not change it.
+  - The silence already at the join is measured in the audio: frames 15 dB below the loud
+    speech of the chunk. The join is filled up to the median pause after the same
+    punctuation inside the chunks (sentence or comma). Without one to measure, 600 ms after a
+    sentence and 250 ms after a comma.
+  - The pause is kept between 150 and 1,200 ms.
+  - A join in the middle of a sentence, or next to audio with no speech to measure, is left
+    as it came. Silence is only ever added, never cut, and the word timings move with it.
+  - With the three chunks of that test, both joins went from 210 and 180 ms of silence to
+    620 ms, the median of that voice between sentences.
+  - A single-chunk synthesis does not change.
+
 ## 0.21.3 - 2026-10-14
 
 ### Added

@@ -1,10 +1,12 @@
 """Shared output normalization and alignment helpers for speech synthesis.
 
-Last updated: 2026-04-23
+Last updated: 2026-10-27
 """
 
 from __future__ import annotations
 
+import logging
+import math
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from pydub import AudioSegment
+from pydub.utils import audioop
 
 from .._transcribe._apis import deepgram as deepgram_transcribe
 from .pre_processing import (
@@ -35,6 +38,29 @@ except Exception:  # pragma: no cover - optional runtime dependency
 
 WORD_GROUP_MAX_WINDOW_SECONDS = 1.2
 WORD_GROUP_MAX_WORDS = 4
+
+logger = logging.getLogger(__name__)
+
+# The pause at the join between two chunks.
+#
+# Providers return each chunk with very little silence around it: on Eleven v4 Turbo, 10 to
+# 170 ms after the last word and 130 to 220 ms before the first one. Glued together, the next
+# sentence started at a third of a normal pause: 180 to 350 ms where the same voice, inside a
+# chunk, pauses 530 to 720 ms between sentences (measured on 2026-10-27 with three chunks of
+# a Spanish narration; sending the provider the previous request and the next text did not
+# change it). The join is filled up to the pause the same synthesis makes inside its chunks,
+# for the same punctuation.
+JOIN_PAUSE_FRAME_MS = 10
+# A frame is silent when it is this many dB below the loud speech of its chunk (the 95th
+# percentile of the frames). Relative, because voices come out at very different levels.
+JOIN_SILENCE_BELOW_SPEECH_DB = 15.0
+# The pause aimed for when the chunks hold no pause of that kind to measure. Sentence: the
+# median measured on Eleven v4 Turbo on 2026-10-27, rounded down.
+DEFAULT_JOIN_PAUSE_MS = {"sentence": 600, "clause": 250}
+JOIN_PAUSE_LIMITS_MS = (150, 1200)
+_SENTENCE_END = frozenset(".!?…")
+_CLAUSE_END = frozenset(",;:")
+_CLOSING_CHARACTERS = "\"'»”’)]}"
 
 
 def build_chunk_record(
@@ -129,10 +155,7 @@ def _finalize_synthesis_output(
     if not isinstance(chunks, list | tuple) or not chunks:
         raise ValueError("chunks must include at least one synthesis chunk.")
 
-    final_audio = AudioSegment.empty()
-    projected_words: list[dict[str, Any]] = []
-    offset_seconds = 0.0
-
+    decoded: list[dict[str, Any]] = []
     for chunk in chunks:
         if not isinstance(chunk, Mapping):
             raise TypeError("Each entry in 'chunks' must be a mapping.")
@@ -140,11 +163,38 @@ def _finalize_synthesis_output(
         chunk_audio = _decode_chunk_audio(chunk)
         chunk_duration_seconds = max(0.0, len(chunk_audio) / 1000.0)
         observed_words = _extract_chunk_observed_words(chunk, audio_duration_seconds=chunk_duration_seconds)
-        chunk_words = _project_words_to_original_text(
-            str(chunk.get("text") or ""),
-            observed_words,
-            audio_duration_seconds=chunk_duration_seconds,
+        decoded.append(
+            {
+                "text": str(chunk.get("text") or ""),
+                "audio": chunk_audio,
+                "duration_seconds": chunk_duration_seconds,
+                "words": _project_words_to_original_text(
+                    str(chunk.get("text") or ""),
+                    observed_words,
+                    audio_duration_seconds=chunk_duration_seconds,
+                ),
+                "timed": _has_provider_timings(chunk),
+            }
         )
+
+    join_pauses_ms = _join_pause_padding_ms(decoded)
+
+    final_audio = AudioSegment.empty()
+    projected_words: list[dict[str, Any]] = []
+    offset_seconds = 0.0
+
+    for index, item in enumerate(decoded):
+        chunk_audio = item["audio"]
+        chunk_duration_seconds = item["duration_seconds"]
+        chunk_words = item["words"]
+        if index > 0 and join_pauses_ms[index - 1] > 0:
+            silence = (
+                AudioSegment.silent(duration=join_pauses_ms[index - 1], frame_rate=chunk_audio.frame_rate)
+                .set_channels(chunk_audio.channels)
+                .set_sample_width(chunk_audio.sample_width)
+            )
+            final_audio += silence
+            offset_seconds += len(silence) / 1000.0
 
         # A word cannot outlast the audio of its own chunk. Providers sometimes report the
         # last word ending a little after the audio really does (2 ms on Multilingual v2,
@@ -181,6 +231,122 @@ def _coerce_cost_usd(value: Any) -> float:
         return round(max(0.0, float(value)), 6)
     except (TypeError, ValueError) as error:
         raise ValueError("cost_usd must be numeric.") from error
+
+
+def _has_provider_timings(chunk: Mapping[str, Any]) -> bool:
+    """Whether the chunk came with real word timings, not an even spread over its audio."""
+    return (
+        bool(chunk.get("observed_words"))
+        or isinstance(chunk.get("char_alignment"), Mapping)
+        or bool(chunk.get("timing_events"))
+    )
+
+
+def _pause_kind(text: str) -> str | None:
+    """`sentence` after . ! ? …, `clause` after , ; : and None in the middle of a sentence."""
+    stripped = str(text or "").rstrip().rstrip(_CLOSING_CHARACTERS).rstrip()
+    if not stripped:
+        return None
+    if stripped[-1] in _SENTENCE_END:
+        return "sentence"
+    if stripped[-1] in _CLAUSE_END:
+        return "clause"
+    return None
+
+
+def _silent_frames(audio: AudioSegment) -> list[bool] | None:
+    """Which frames of the audio are silent, relative to the loud speech of the same audio.
+    None when there is nothing to measure: no frames, or no speech above the silence."""
+    mono = audio.set_channels(1)
+    width = mono.sample_width
+    step = max(1, int(mono.frame_rate * JOIN_PAUSE_FRAME_MS / 1000)) * width
+    raw = mono.raw_data
+    full_scale = float(1 << (8 * width - 1))
+    # The last frame may be shorter: it still counts, or a silence at the very end of the
+    # audio would measure one frame short.
+    levels = [
+        20.0 * math.log10(max(audioop.rms(raw[start : start + step], width), 1) / full_scale)
+        for start in range(0, len(raw) - width + 1, step)
+    ]
+    if not levels:
+        return None
+    ordered = sorted(levels)
+    speech = ordered[int(0.95 * (len(ordered) - 1))]
+    if speech - ordered[0] < JOIN_SILENCE_BELOW_SPEECH_DB:
+        return None
+    threshold = speech - JOIN_SILENCE_BELOW_SPEECH_DB
+    return [level < threshold for level in levels]
+
+
+def _silent_run_ms(silent: list[bool] | None, frame: int) -> int:
+    """How long the silence that holds `frame` lasts; 0 when that frame is not silent."""
+    if not silent or not 0 <= frame < len(silent) or not silent[frame]:
+        return 0
+    first = frame
+    while first > 0 and silent[first - 1]:
+        first -= 1
+    last = frame
+    while last + 1 < len(silent) and silent[last + 1]:
+        last += 1
+    return (last - first + 1) * JOIN_PAUSE_FRAME_MS
+
+
+def _median(values: list[int]) -> float:
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[middle])
+    return (ordered[middle - 1] + ordered[middle]) / 2.0
+
+
+def _join_pause_padding_ms(decoded: list[Mapping[str, Any]]) -> list[int]:
+    """The silence to add at each join, so it lasts what the same voice pauses inside its
+    chunks after the same punctuation. A join in the middle of a sentence gets nothing, and
+    silence is only ever added, never cut."""
+    if len(decoded) < 2:
+        return []
+    silent = [_silent_frames(item["audio"]) for item in decoded]
+
+    measured: dict[str, list[int]] = {"sentence": [], "clause": []}
+    for item, frames in zip(decoded, silent):
+        if not item["timed"] or frames is None:
+            continue
+        words = item["words"]
+        for current, following in zip(words, words[1:]):
+            kind = _pause_kind(current["word"])
+            if kind is None:
+                continue
+            middle_ms = (float(current["end"]) + float(following["start"])) * 500.0
+            run = _silent_run_ms(frames, int(middle_ms // JOIN_PAUSE_FRAME_MS))
+            if run:
+                measured[kind].append(run)
+
+    low, high = JOIN_PAUSE_LIMITS_MS
+    targets = {
+        kind: int(min(high, max(low, _median(values)))) if values else DEFAULT_JOIN_PAUSE_MS[kind]
+        for kind, values in measured.items()
+    }
+
+    padding: list[int] = []
+    for index in range(1, len(decoded)):
+        kind = _pause_kind(decoded[index - 1]["text"])
+        before, after = silent[index - 1], silent[index]
+        if kind is None or before is None or after is None:
+            padding.append(0)
+            continue
+        existing = _silent_run_ms(before, len(before) - 1) + _silent_run_ms(after, 0)
+        added = max(0, targets[kind] - existing)
+        padding.append(added)
+        logger.info(
+            "synthesis join %s: %s pause, %s ms of silence, %s ms added (target %s ms from %s pauses)",
+            index,
+            kind,
+            existing,
+            added,
+            targets[kind],
+            len(measured[kind]),
+        )
+    return padding
 
 
 def _decode_chunk_audio(chunk: Mapping[str, Any]) -> AudioSegment:
