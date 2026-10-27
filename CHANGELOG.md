@@ -3,7 +3,12 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.21.4 - 2026-10-27
+
+### Added
+
+- `music.generate(..., api="kie", model="V6", instrumental=True)`: the song without vocals.
+  The lyrics may be empty and `title` is required, so a sample is never called «Untitled».
 
 ### Fixed
 
