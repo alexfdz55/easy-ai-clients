@@ -3,6 +3,25 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.23.0 - 2026-11-06
+
+### Added
+
+- OpenRouter video adapters (`video.*` with `api="openrouter"`, including avatar
+  and async follow-up references) now support optional submit controls:
+  - `webhook_url` mapped to OpenRouter `callback_url` on `POST /api/v1/videos`,
+  - `on_submitted(receipt)` called immediately after submit,
+  - `submission` to reuse a previous receipt and skip submit.
+- HeyGen video translation (`video.translate(..., api="heygen")`) now supports:
+  - `webhook_url` mapped to translation `callback_url`,
+  - `on_submitted(receipt)`,
+  - `submission` resume without a new submit call.
+- Hedra avatar/video-with-audio paths now support:
+  - `on_submitted(receipt)`,
+  - `submission` resume without submit,
+  - explicit `ValueError` when `webhook_url` is provided (Hedra API has no
+    callback URL for these routes).
+
 ## 0.22.0 - 2026-11-06
 
 ### Added
