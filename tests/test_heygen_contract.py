@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 
 def test_heygen_headers_use_x_api_key(monkeypatch):
     from easy_ai_clients import _heygen
@@ -93,6 +95,87 @@ def test_heygen_avatar_video_payload(monkeypatch):
     assert captured["payload"]["avatar_id"] == "avatar-1"
     assert captured["payload"]["script"] == "Hello"
     assert captured["payload"]["voice_id"] == "voice-1"
+
+
+def test_heygen_translate_supports_webhook_and_on_submitted(monkeypatch):
+    from easy_ai_clients.video._translate._apis import heygen as provider
+
+    captured = {}
+    receipts = []
+
+    def fake_request_json(method, path, payload=None, **kwargs):
+        captured.update(method=method, path=path, payload=payload)
+        return {"data": {"video_translation_id": "translate-1", "status": "pending"}}
+
+    monkeypatch.setattr(provider._heygen, "request_json", fake_request_json)
+
+    result = provider.translate_video(
+        video_url="https://example.com/source.mp4",
+        output_languages=["Spanish"],
+        sync=False,
+        webhook_url="https://notice.example/heygen",
+        on_submitted=receipts.append,
+    )
+
+    assert captured["path"] == "/v3/video-translations"
+    assert captured["payload"]["callback_url"] == "https://notice.example/heygen"
+    assert "webhook_url" not in captured["payload"]
+    assert receipts and receipts[0]["data"]["video_translation_id"] == "translate-1"
+    assert result["request_id"] == "translate-1"
+
+
+def test_heygen_translate_submission_skips_post_and_waits(monkeypatch):
+    from easy_ai_clients.video._translate._apis import heygen as provider
+
+    calls = []
+
+    def fake_request_json(method, path, payload=None, **kwargs):
+        calls.append((method, path))
+        if method == "POST":
+            raise AssertionError("submit POST should not run when submission is provided")
+        return {
+            "data": {
+                "video_translation_id": "translate-2",
+                "status": "completed",
+                "video_url": "https://cdn.example.com/translated.mp4",
+            }
+        }
+
+    monkeypatch.setattr(provider._heygen, "request_json", fake_request_json)
+    monkeypatch.setattr(provider._heygen, "wait_for_result", lambda getter, **kwargs: getter())
+
+    result = provider.translate_video(
+        sync=True,
+        submission={"data": {"video_translation_id": "translate-2", "status": "pending"}},
+    )
+
+    assert calls == [("GET", "https://api.heygen.com/v3/video-translations/translate-2")]
+    assert result["request_id"] == "translate-2"
+    assert result["video_url"] == "https://cdn.example.com/translated.mp4"
+
+
+def test_public_dispatcher_propagates_heygen_translate_on_submitted_exception(monkeypatch):
+    from easy_ai_clients import video
+    from easy_ai_clients.video._translate._apis import heygen as provider
+
+    expected = RuntimeError("stop translation after submit")
+
+    monkeypatch.setattr(
+        provider._heygen,
+        "request_json",
+        lambda method, path, payload=None, **kwargs: {"data": {"video_translation_id": "translate-stop-1", "status": "pending"}},
+    )
+
+    with pytest.raises(RuntimeError) as raised:
+        video.translate(
+            video="https://example.com/source.mp4",
+            output_languages=["Spanish"],
+            api="heygen",
+            sync=False,
+            on_submitted=lambda _receipt: (_ for _ in ()).throw(expected),
+        )
+
+    assert raised.value is expected
 
 
 def test_heygen_lipsync_payload_and_resource_delete_guard(monkeypatch):

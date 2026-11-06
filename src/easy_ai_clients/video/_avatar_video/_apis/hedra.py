@@ -16,7 +16,15 @@ from ..._shared import download_file, merge_extra_payload, normalize_output_path
 from ..post_processing import build_result
 
 DEFAULT_MODEL = "hedra-avatar"
-COMMON_OPTIONS = {"model", "timeout_seconds", "poll_interval_seconds", "extra_payload"}
+COMMON_OPTIONS = {
+    "model",
+    "timeout_seconds",
+    "poll_interval_seconds",
+    "extra_payload",
+    "webhook_url",
+    "on_submitted",
+    "submission",
+}
 GENERATED_INPUT_OPTIONS = {
     "duration_ms",
     "duration_seconds",

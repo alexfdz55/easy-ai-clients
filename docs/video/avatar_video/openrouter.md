@@ -48,6 +48,10 @@ a provider slug, because their options travel under that slug.
 - HeyGen options, sent under `provider.options.heygen`: `voice_id`, `voice_settings`,
   `motion_prompt`, `expressiveness`, `fit`, `remove_background`, `background`, `caption`,
   `title`. Any other keyword argument is dropped.
+- `webhook_url`: alias of OpenRouter `callback_url` for submit calls.
+- `on_submitted(receipt)`: callback called right after a successful submit response.
+- `submission`: previous submit receipt. When provided, no new submit request is sent and
+  the wrapper resumes polling/result retrieval for that `id`.
 
 ## Public URLs Only
 

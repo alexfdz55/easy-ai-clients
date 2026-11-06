@@ -17,8 +17,13 @@ Remote `video_url` is not accepted because the request uses `video_id`.
 
 Optional `prompt` guides the generated audio.
 
-Accepted kwargs include `timeout_seconds`, `poll_interval_seconds`, and
-`extra_payload`.
+Accepted kwargs include `timeout_seconds`, `poll_interval_seconds`,
+`on_submitted`, `submission`, and `extra_payload`.
+
+`webhook_url` is rejected with `ValueError` before submit because this Hedra
+API does not support callback/webhook URLs. `on_submitted(receipt)` receives
+the submit receipt right after `POST`. `submission` skips submit and resumes
+polling/result retrieval from a previous receipt.
 
 ## Model Coverage
 

@@ -662,6 +662,113 @@ def test_hedra_common_preserves_and_reuses_status_refs(monkeypatch):
     assert refs["status_url"] == "https://exact/hedra-status"
 
 
+def test_hedra_common_calls_on_submitted_and_reuses_submission_without_post(monkeypatch):
+    from easy_ai_clients.video import _hedra_common as common
+
+    calls = []
+    receipts = []
+
+    def fake_json(method, path, api_key, payload=None, timeout_seconds=None):
+        calls.append(method)
+        return {"id": "hedra-hook-1", "status_url": "https://api.hedra.com/web-app/public/generations/hedra-hook-1/status"}
+
+    monkeypatch.setenv("HEDRA_API_KEY", "hedra-key")
+    monkeypatch.setattr(common, "hedra_json", fake_json)
+    monkeypatch.setattr(
+        common,
+        "hedra_wait_for_result",
+        lambda generation_id, api_key, **kwargs: {
+            "status": "complete",
+            "download_url": f"https://cdn.example/{generation_id}.mp4",
+        },
+    )
+
+    model_data = {"id": "model-id", "name": "Model", "operation": "avatar_video"}
+    submitted = common.submit_generation(
+        {"type": "video"},
+        False,
+        None,
+        model_data,
+        {"cost_reason": "none", "cost_credits": 0, "credit_source": "none"},
+        {"on_submitted": receipts.append},
+    )
+
+    assert calls == ["POST"]
+    assert receipts and receipts[0]["id"] == "hedra-hook-1"
+    assert submitted[1] == "hedra-hook-1"
+
+    calls.clear()
+    reused = common.submit_generation(
+        {"type": "video"},
+        True,
+        None,
+        model_data,
+        {"cost_reason": "none", "cost_credits": 0, "credit_source": "none"},
+        {"submission": {"id": "hedra-reused-1"}},
+    )
+
+    assert calls == []
+    assert reused[1] == "hedra-reused-1"
+    assert reused[2] == "completed"
+    assert reused[3] == "https://cdn.example/hedra-reused-1.mp4"
+
+
+def test_hedra_avatar_and_video_with_audio_reject_webhook_url_before_submit(monkeypatch):
+    from easy_ai_clients.video import _hedra_common as common
+    from easy_ai_clients.video._avatar_video._apis import hedra as avatar_provider
+    from easy_ai_clients.video._video_with_audio._apis import hedra as audio_provider
+
+    monkeypatch.setenv("HEDRA_API_KEY", "hedra-key")
+    monkeypatch.setattr(
+        common,
+        "hedra_json",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("submit POST should not run when webhook_url is provided")
+        ),
+    )
+
+    with pytest.raises(ValueError, match="does not support webhook_url"):
+        avatar_provider.generate_avatar_video(
+            start_keyframe_url="https://example.com/avatar.png",
+            audio_id="audio-1",
+            sync=False,
+            webhook_url="https://notice.example/hedra",
+        )
+
+    with pytest.raises(ValueError, match="does not support webhook_url"):
+        audio_provider.generate_video_with_audio(
+            video_id="video-1",
+            model="model-1",
+            sync=False,
+            webhook_url="https://notice.example/hedra",
+        )
+
+
+def test_public_video_dispatcher_does_not_swallow_hedra_on_submitted_exception(monkeypatch):
+    from easy_ai_clients import video
+    from easy_ai_clients.video import _hedra_common as common
+
+    expected = RuntimeError("stop hedra after submit")
+
+    monkeypatch.setenv("HEDRA_API_KEY", "hedra-key")
+    monkeypatch.setattr(
+        common,
+        "hedra_json",
+        lambda method, path, api_key, payload=None, timeout_seconds=None: {"id": "hedra-stop-1"},
+    )
+
+    with pytest.raises(RuntimeError) as raised:
+        video.avatar_video(
+            avatar="start-keyframe-id",
+            api="hedra",
+            audio_id="audio-id",
+            sync=False,
+            on_submitted=lambda _receipt: (_ for _ in ()).throw(expected),
+        )
+
+    assert raised.value is expected
+
+
 def test_heygen_together_and_xai_common_helpers_echo_async_refs(monkeypatch):
     from easy_ai_clients.video import _heygen_common as heygen
     from easy_ai_clients.video import _together_common as together

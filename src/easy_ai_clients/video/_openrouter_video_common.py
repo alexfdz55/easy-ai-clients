@@ -9,6 +9,7 @@ import urllib.parse
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from .._submission_hooks import run_on_submitted
 from ._shared import (
     clean_text,
     download_file,
@@ -149,6 +150,9 @@ RESERVED_KWARGS = {
     "reference_url",
     "frame_images",
     "input_references",
+    "webhook_url",
+    "on_submitted",
+    "submission",
 }
 
 NATIVE_OPTIONAL = (
@@ -680,8 +684,22 @@ def finalize_or_submit(
     sync: bool,
     timeout_seconds: float | None,
     poll_interval_seconds: float | None,
+    webhook_url: str | None = None,
+    on_submitted: Any = None,
+    submission: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    raw = create_job(payload, timeout_seconds=timeout_seconds)
+    if submission is not None:
+        if not isinstance(submission, Mapping):
+            raise TypeError("submission must be a dictionary when provided.")
+        raw = dict(submission)
+    else:
+        submit_payload = dict(payload)
+        callback_url = str(submit_payload.get("callback_url") or "").strip()
+        webhook = str(webhook_url or "").strip()
+        if webhook and not callback_url:
+            submit_payload["callback_url"] = webhook
+        raw = create_job(submit_payload, timeout_seconds=timeout_seconds)
+        run_on_submitted(on_submitted, raw)
     video_id = request_id(raw)
     if not video_id:
         raise RuntimeError("OpenRouter video submission did not return a job id.")

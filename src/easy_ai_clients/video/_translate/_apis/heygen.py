@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from .... import _heygen
+from ...._submission_hooks import run_on_submitted
 from ..._heygen_common import (
     TRANSLATE_MODEL,
     build_video_result,
@@ -20,31 +22,43 @@ def _translation_url(video_translation_id):
 
 
 def translate_video(video=None, output_languages=None, output_path=None, sync=True, **kwargs: Any):
-    languages = output_languages if output_languages is not None else kwargs.pop("output_languages", None)
-    if isinstance(languages, str):
-        languages = [languages]
-    payload = passthrough_payload(
-        {
-            "video": media_union(
-                kwargs.pop("video_path", None) or video,
-                kwargs.pop("video_url", None),
-                kwargs.pop("video_asset_id", None),
-                field_name="video",
-            ),
-            "output_languages": languages,
-        },
-        kwargs,
-    )
-    if not payload.get("video"):
-        raise ValueError("video is required.")
-    if not payload.get("output_languages"):
-        raise ValueError("output_languages is required.")
-    raw = _heygen.request_json(
-        "POST",
-        "/v3/video-translations",
-        payload=payload,
-        timeout_seconds=kwargs.get("timeout_seconds"),
-    )
+    submission = kwargs.get("submission")
+    if submission is not None:
+        if not isinstance(submission, Mapping):
+            raise TypeError("submission must be a dictionary when provided.")
+        raw = dict(submission)
+    else:
+        local_kwargs = dict(kwargs)
+        languages = output_languages if output_languages is not None else local_kwargs.pop("output_languages", None)
+        if isinstance(languages, str):
+            languages = [languages]
+        callback_url = str(local_kwargs.get("callback_url") or "").strip()
+        webhook = str(local_kwargs.get("webhook_url") or "").strip()
+        if webhook and not callback_url:
+            local_kwargs["callback_url"] = webhook
+        payload = passthrough_payload(
+            {
+                "video": media_union(
+                    local_kwargs.pop("video_path", None) or video,
+                    local_kwargs.pop("video_url", None),
+                    local_kwargs.pop("video_asset_id", None),
+                    field_name="video",
+                ),
+                "output_languages": languages,
+            },
+            local_kwargs,
+        )
+        if not payload.get("video"):
+            raise ValueError("video is required.")
+        if not payload.get("output_languages"):
+            raise ValueError("output_languages is required.")
+        raw = _heygen.request_json(
+            "POST",
+            "/v3/video-translations",
+            payload=payload,
+            timeout_seconds=kwargs.get("timeout_seconds"),
+        )
+        run_on_submitted(kwargs.get("on_submitted"), raw)
     ids = []
     item = _heygen.data(raw)
     if isinstance(item, dict) and isinstance(item.get("video_translation_ids"), list):

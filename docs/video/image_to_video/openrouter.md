@@ -68,8 +68,14 @@ def image_to_video(prompt, image=None, model=None, *, api, **kwargs):
 Accepted `kwargs`: `model`, `image_path`, `image_url`, `end_image_url` (aliases
 `last_image_url`, `last_frame`), `resolution`, `aspect_ratio` (alias `ratio`;
 `auto` is omitted), `duration` (alias `duration_seconds`), `generate_audio`,
-`seed`, `image_urls`, `video_urls`, `audio_urls`, `timeout_seconds`,
-`poll_interval_seconds`, and `extra_payload`.
+`seed`, `webhook_url`, `on_submitted`, `submission`, `image_urls`,
+`video_urls`, `audio_urls`, `timeout_seconds`, `poll_interval_seconds`, and
+`extra_payload`.
+
+`webhook_url` maps to OpenRouter `callback_url` on `POST /api/v1/videos` when
+`callback_url` is not already present. `on_submitted(receipt)` runs immediately
+after submit. `submission` skips the submit call and resumes from a previous
+receipt.
 
 The source image is sent as `frame_images` with `frame_type: "first_frame"`.
 When `end_image_url` is provided it is sent as `frame_type: "last_frame"`.

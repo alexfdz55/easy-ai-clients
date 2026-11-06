@@ -17,7 +17,15 @@ from ..._shared import (
 from ..post_processing import build_result
 from ..pre_processing import prepare_video_with_audio
 
-COMMON_OPTIONS = {"model", "timeout_seconds", "poll_interval_seconds", "extra_payload"}
+COMMON_OPTIONS = {
+    "model",
+    "timeout_seconds",
+    "poll_interval_seconds",
+    "extra_payload",
+    "webhook_url",
+    "on_submitted",
+    "submission",
+}
 
 
 def _selected_model(kwargs):

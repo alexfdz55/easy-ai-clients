@@ -56,8 +56,15 @@ def text_to_video(prompt, model=None, *, api, **kwargs):
 
 Accepted `kwargs`: `model`, `resolution`, `aspect_ratio` (alias `ratio`; `auto`
 is omitted), `duration` (alias `duration_seconds`), `generate_audio`, `seed`,
-`callback_url`, `size`, `image_urls`, `video_urls`, `audio_urls`,
-`timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+`callback_url`, `webhook_url`, `on_submitted`, `submission`, `size`,
+`image_urls`, `video_urls`, `audio_urls`, `timeout_seconds`,
+`poll_interval_seconds`, and `extra_payload`.
+
+`webhook_url` maps to OpenRouter `callback_url` on `POST /api/v1/videos` when
+`callback_url` is not already set. `on_submitted(receipt)` runs right after a
+successful submit response (receipt includes `id` and usually `polling_url`).
+`submission` skips the submit call and resumes polling/result retrieval from a
+previous receipt.
 
 `generate_audio` is sent only when the caller supplies it. Documented duration
 limits are 4-15 seconds for Seedance 2.0 family models, 4-30 seconds for 2.5,

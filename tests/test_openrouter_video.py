@@ -67,6 +67,90 @@ def test_openrouter_text_to_video_payload_and_async_refs(monkeypatch):
     }
 
 
+def test_openrouter_text_to_video_webhook_and_on_submitted(monkeypatch):
+    from easy_ai_clients.video._text_to_video._apis import openrouter as provider
+
+    captured = {}
+    receipts = []
+
+    def fake_http_json(method, url, headers=None, payload=None, timeout_seconds=None):
+        captured["payload"] = payload
+        return {
+            "id": "job-hook-1",
+            "polling_url": "/api/v1/videos/job-hook-1",
+            "status": "pending",
+        }
+
+    _patch_http(monkeypatch, fake_http_json)
+
+    result = provider.generate_text_to_video(
+        "A compact product shot.",
+        sync=False,
+        webhook_url="https://notice.example/openrouter",
+        on_submitted=receipts.append,
+    )
+
+    assert captured["payload"]["callback_url"] == "https://notice.example/openrouter"
+    assert "webhook_url" not in captured["payload"]
+    assert receipts and receipts[0]["id"] == "job-hook-1"
+    assert result["request_id"] == "job-hook-1"
+
+
+def test_openrouter_submission_skips_post_and_fetches_result(monkeypatch):
+    from easy_ai_clients.video._text_to_video._apis import openrouter as provider
+
+    calls = []
+
+    def fake_http_json(method, url, headers=None, payload=None, timeout_seconds=None):
+        calls.append(method)
+        if method == "POST":
+            raise AssertionError("submit POST should not run when submission is provided")
+        return {
+            "id": "job-reused-1",
+            "status": "completed",
+            "unsigned_urls": ["https://cdn.example/reused.mp4"],
+            "usage": {"cost": 0.09},
+        }
+
+    _patch_http(monkeypatch, fake_http_json)
+
+    result = provider.generate_text_to_video(
+        "A calm still frame.",
+        sync=True,
+        submission={"id": "job-reused-1", "polling_url": "/api/v1/videos/job-reused-1"},
+    )
+
+    assert calls == ["GET"]
+    assert result["request_id"] == "job-reused-1"
+    assert result["video_url"] == "https://cdn.example/reused.mp4"
+    assert result["cost_usd"] == 0.09
+
+
+def test_public_dispatcher_propagates_openrouter_on_submitted_exception(monkeypatch):
+    from easy_ai_clients import video
+    from easy_ai_clients.video import _openrouter_video_common as common
+
+    expected = RuntimeError("stop after submit")
+
+    def fake_http_json(method, url, headers=None, payload=None, timeout_seconds=None):
+        if method == "POST":
+            return {"id": "job-stop-1", "status": "pending"}
+        raise AssertionError("polling should not run after callback failure")
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-or")
+    monkeypatch.setattr(common, "http_json", fake_http_json)
+
+    with pytest.raises(RuntimeError) as raised:
+        video.text_to_video(
+            "A still shot.",
+            api="openrouter",
+            sync=False,
+            on_submitted=lambda _receipt: (_ for _ in ()).throw(expected),
+        )
+
+    assert raised.value is expected
+
+
 def test_openrouter_text_to_video_multimodal_refs(monkeypatch):
     from easy_ai_clients.video._text_to_video._apis import openrouter as provider
 

@@ -15,6 +15,13 @@ def generate_text_to_video(prompt, output_path=None, sync=True, **kwargs):
         mode="text_to_video",
         kwargs=kwargs,
     )
+    submit_options = {}
+    if kwargs.get("webhook_url") is not None:
+        submit_options["webhook_url"] = kwargs.get("webhook_url")
+    if kwargs.get("on_submitted") is not None:
+        submit_options["on_submitted"] = kwargs.get("on_submitted")
+    if kwargs.get("submission") is not None:
+        submit_options["submission"] = kwargs.get("submission")
     return common.finalize_or_submit(
         model=model,
         payload=payload,
@@ -22,6 +29,7 @@ def generate_text_to_video(prompt, output_path=None, sync=True, **kwargs):
         sync=bool(sync),
         timeout_seconds=kwargs.get("timeout_seconds"),
         poll_interval_seconds=kwargs.get("poll_interval_seconds"),
+        **submit_options,
     )
 
 

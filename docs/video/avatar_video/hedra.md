@@ -14,7 +14,13 @@ The friendly alias `hedra_avatar` also resolves to `hedra-avatar`.
 
 Use `avatar` or `start_keyframe_id`, or pass `image` / `image_path` / `image_url`. For speech, pass `audio_id`, a local `audio` path, or `text` with `voice_id`. Hedra does not document direct `audio_url` ingestion for this endpoint, so remote audio URLs are rejected unless converted to an asset ID first.
 
-Accepted kwargs include `model`, `duration_seconds`, `duration_ms`, `aspect_ratio`, `resolution`, `voice_id`, `batch_size`, `timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+Accepted kwargs include `model`, `duration_seconds`, `duration_ms`, `aspect_ratio`, `resolution`, `voice_id`, `batch_size`, `timeout_seconds`, `poll_interval_seconds`, `on_submitted`, `submission`, and `extra_payload`.
+
+`webhook_url` is rejected with `ValueError` before any request is sent because
+this Hedra API does not support callback/webhook URLs.
+`on_submitted(receipt)` receives the Hedra submit receipt right after `POST`.
+`submission` skips the submit call and resumes polling/result retrieval for the
+same generation id.
 
 ## Model Coverage
 

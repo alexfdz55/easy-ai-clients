@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
+from .._submission_hooks import run_on_submitted
 from ._shared import (
     hedra_async_refs,
     hedra_extract_video_url,
@@ -164,8 +167,27 @@ def hedra_cost(model_data, kwargs):
 
 def submit_generation(payload, sync, output_path, model_data, cost, kwargs):
     api_key = require_env(ENV_NAME, "Hedra")
-    raw = hedra_json("POST", "/generations", api_key, payload=payload, timeout_seconds=kwargs.get("timeout_seconds"))
-    generation_id = raw.get("id") or raw.get("generation_id")
+    webhook = str(kwargs.get("webhook_url") or "").strip()
+    if webhook:
+        raise ValueError("Hedra API does not support webhook_url for this operation.")
+    submission = kwargs.get("submission")
+    if submission is not None:
+        if not isinstance(submission, Mapping):
+            raise TypeError("submission must be a dictionary when provided.")
+        raw = dict(submission)
+    else:
+        raw = hedra_json(
+            "POST",
+            "/generations",
+            api_key,
+            payload=payload,
+            timeout_seconds=kwargs.get("timeout_seconds"),
+        )
+        run_on_submitted(kwargs.get("on_submitted"), raw)
+    generation_id = raw.get("id") or raw.get("generation_id") or raw.get("request_id")
+    if not generation_id and isinstance(raw.get("data"), Mapping):
+        nested = raw.get("data") or {}
+        generation_id = nested.get("id") or nested.get("generation_id") or nested.get("request_id")
     if not generation_id:
         raise RuntimeError("Hedra generation response did not include an id.")
     refs = hedra_async_refs(raw, generation_id)

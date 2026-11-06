@@ -32,6 +32,9 @@ def passthrough_payload(base: Mapping[str, Any], kwargs: Mapping[str, Any], excl
         "estimated_cost_usd",
         "billing_cost_usd",
         "extra_payload",
+        "webhook_url",
+        "on_submitted",
+        "submission",
     }
     payload = dict(base)
     for name, value in kwargs.items():
