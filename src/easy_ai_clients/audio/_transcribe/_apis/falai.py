@@ -13,6 +13,7 @@ Official references:
 import time
 from typing import Any
 
+from ...._submission_hooks import run_on_submitted
 from .._apis._shared import (
     build_word_record,
     compute_cost_by_duration,
@@ -38,6 +39,9 @@ DOCUMENTED_KWARGS = {
     "num_speakers",
     "language_mkd",
     "timeout_seconds",
+    "webhook_url",
+    "on_submitted",
+    "submission",
 }
 
 
@@ -55,6 +59,9 @@ def transcribe(
     num_speakers = options.pop("num_speakers", None)
     language_mkd = options.pop("language_mkd", "en")
     timeout_seconds = float(options.pop("timeout_seconds", 300))
+    webhook_url = options.pop("webhook_url", None)
+    on_submitted = options.pop("on_submitted", None)
+    submission = options.pop("submission", None)
 
     request_audio = build_request_audio(audio_input)
     api_key = get_required_api_key("FAL_KEY")
@@ -71,17 +78,28 @@ def transcribe(
         input_payload["num_speakers"] = int(num_speakers)
     input_payload.update({key: value for key, value in options.items() if value is not None})
 
-    submit_response = request_with_retries(
-        "POST",
-        f"https://queue.fal.run/{model}",
-        headers={
-            "Authorization": f"Key {api_key}",
-            "Content-Type": "application/json",
-        },
-        json_body=input_payload,
-        timeout=(15.0, float(timeout_seconds)),
-    )
-    submit_payload = response_json(submit_response)
+    if submission is not None:
+        if not isinstance(submission, dict):
+            raise TypeError("submission must be a dictionary when provided.")
+        submit_payload = dict(submission)
+    else:
+        request_params = {}
+        webhook = str(webhook_url or "").strip()
+        if webhook:
+            request_params["fal_webhook"] = webhook
+        submit_response = request_with_retries(
+            "POST",
+            f"https://queue.fal.run/{model}",
+            headers={
+                "Authorization": f"Key {api_key}",
+                "Content-Type": "application/json",
+            },
+            params=request_params or None,
+            json_body=input_payload,
+            timeout=(15.0, float(timeout_seconds)),
+        )
+        submit_payload = response_json(submit_response)
+        run_on_submitted(on_submitted, submit_payload)
 
     status_url = str(submit_payload.get("status_url") or "").strip()
     response_url = str(submit_payload.get("response_url") or "").strip()

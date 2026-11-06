@@ -40,7 +40,7 @@ def image_lipsync(image=None, audio=None, text=None, model=None, *, api, **kwarg
 
 Required normalized inputs: `image_path` or `image_url`, and `audio_path` or `audio_url`. The wrapper rejects `text` because the selected fal.ai LongCat endpoint does not expose text-to-speech through this normalized wrapper.
 
-Accepted `kwargs`: `model`, `prompt`, `negative_prompt`, `num_inference_steps`, `text_guidance_scale`, `audio_guidance_scale`, `resolution`, `num_segments`, `seed`, `enable_safety_checker`, `enable_prompt_expansion`, `timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+Accepted `kwargs`: `model`, `prompt`, `negative_prompt`, `num_inference_steps`, `text_guidance_scale`, `audio_guidance_scale`, `resolution`, `num_segments`, `seed`, `enable_safety_checker`, `enable_prompt_expansion`, `timeout_seconds`, `poll_interval_seconds`, `extra_payload`, `webhook_url`, `on_submitted`, and `submission`.
 
 Validated values include `resolution` `480p` or `720p`, `num_segments` 1 to 10, `num_inference_steps` 10 to 100, and guidance scales 1 to 10.
 
@@ -62,6 +62,8 @@ Validated values include `resolution` `480p` or `720p`, `num_segments` 1 to 10, 
 ## Domain Notes
 
 `sync=True` uses fal.ai queue submit, poll, response retrieval, and optional download. `sync=False` returns queue URLs and `request_id`. Use `video.get_status`, `video.get_result`, and `video.download` with operation `image_lipsync` for async follow-up work.
+
+When `webhook_url` is provided, queue submission includes `?fal_webhook=<urlencoded value>`. `on_submitted` runs right after successful submit with the receipt dictionary, and `submission` skips submit and reuses a previous receipt for polling/result retrieval.
 
 When fal.ai returns queue URLs, the adapter preserves them and uses them for
 `sync=True` polling. Pass `status_url` back to `video.get_status(...)` and

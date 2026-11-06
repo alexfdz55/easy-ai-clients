@@ -45,7 +45,7 @@ Normalized parameters:
 | `output_path` | no | Downloads completed output when `sync=True`. |
 | `sync` | no | `False` returns queue identifiers. |
 
-Accepted `kwargs`: `model`, `duration`, `aspect_ratio`, `tail_image_url`, `negative_prompt`, `cfg_scale`, `static_mask_url`, `dynamic_masks`, `timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+Accepted `kwargs`: `model`, `duration`, `aspect_ratio`, `tail_image_url`, `negative_prompt`, `cfg_scale`, `static_mask_url`, `dynamic_masks`, `timeout_seconds`, `poll_interval_seconds`, `extra_payload`, `webhook_url`, `on_submitted`, and `submission`.
 
 Validated values: `duration` `5` or `10`, and `aspect_ratio` `16:9`, `9:16`, or `1:1`. `cfg_scale`, `static_mask_url`, and `dynamic_masks` are forwarded because the official model schema documents them without additional wrapper-side enum or numeric bounds.
 
@@ -77,7 +77,7 @@ for documented units whose billable quantity is known.
 
 ## Domain Notes
 
-Use `video.get_status`, `video.get_result`, and `video.download` with operation `image_to_video` for async follow-up work. `extra_payload` is supported but can bypass validation.
+Use `video.get_status`, `video.get_result`, and `video.download` with operation `image_to_video` for async follow-up work. `extra_payload` is supported but can bypass validation. `webhook_url` appends `?fal_webhook=<urlencoded value>` on submit, `on_submitted` is called with the submit receipt right after successful submit, and `submission` skips submit and reuses a previous receipt.
 
 When fal.ai returns queue URLs, the adapter preserves them and uses them for
 `sync=True` polling. Pass `status_url` back to `video.get_status(...)` and

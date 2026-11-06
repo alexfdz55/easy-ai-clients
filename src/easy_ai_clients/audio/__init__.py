@@ -14,6 +14,7 @@ import importlib
 from typing import Any
 
 from .._error_utils import attach_error, error_message
+from .._submission_hooks import is_on_submitted_exception
 from ._transcribe.pre_processing import PreparedTranscriptionAudio, prepare_transcription_audio
 
 __all__ = [
@@ -160,6 +161,8 @@ def generate(text, model=None, voice=None, language_code=None, *, api, **kwargs)
             arguments["voice"] = voice
         return module.generate(text, **arguments)
     except Exception as exc:
+        if is_on_submitted_exception(exc):
+            raise
         return attach_error(
             {
                 "cost_usd": 0.0,
@@ -240,6 +243,8 @@ def transcribe(
             return module.transcribe(request_audio_input, **kwargs)
         return module.transcribe(request_audio_input, model=model, **kwargs)
     except Exception as exc:
+        if is_on_submitted_exception(exc):
+            raise
         message = error_message(exc)
         return attach_error(
             {

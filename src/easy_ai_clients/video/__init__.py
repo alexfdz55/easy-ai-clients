@@ -14,6 +14,7 @@ import importlib
 from typing import Any
 
 from .._error_utils import attach_error, error_message
+from .._submission_hooks import is_on_submitted_exception
 
 __all__ = [
     "generate",
@@ -669,6 +670,8 @@ def download(operation, request_id=None, video_url=None, output_path=None, model
 
 
 def _video_failure(exc, *, api, operation, model, output_path=None):
+    if is_on_submitted_exception(exc):
+        raise exc
     message = error_message(exc)
     return attach_error(
         {

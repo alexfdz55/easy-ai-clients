@@ -294,6 +294,90 @@ FALAI_OPERATION_CASES = [
 
 
 @pytest.mark.parametrize(("module_name", "function_name", "call_kwargs"), FALAI_OPERATION_CASES)
+def test_falai_operations_forward_webhook_and_call_on_submitted(
+    monkeypatch,
+    module_name,
+    function_name,
+    call_kwargs,
+):
+    import importlib
+
+    provider = importlib.import_module(module_name)
+    captured = {}
+    receipts = []
+
+    monkeypatch.setenv("FAL_KEY", "fal-key")
+
+    def fake_submit(model, payload, api_key, timeout_seconds=None, webhook_url=None):
+        captured["webhook_url"] = webhook_url
+        return {
+            "request_id": "fal-webhook-1",
+            "status_url": "https://queue.example/status/fal-webhook-1",
+            "response_url": "https://queue.example/response/fal-webhook-1",
+        }
+
+    monkeypatch.setattr(provider, "fal_submit", fake_submit)
+
+    result = getattr(provider, function_name)(
+        sync=False,
+        webhook_url="https://notice.example/fal",
+        on_submitted=receipts.append,
+        **call_kwargs,
+    )
+
+    assert captured["webhook_url"] == "https://notice.example/fal"
+    assert receipts and receipts[0]["request_id"] == "fal-webhook-1"
+    assert result["request_id"] == "fal-webhook-1"
+
+
+@pytest.mark.parametrize(("module_name", "function_name", "call_kwargs"), FALAI_OPERATION_CASES)
+def test_falai_operations_reuse_submission_without_post(
+    monkeypatch,
+    module_name,
+    function_name,
+    call_kwargs,
+):
+    import importlib
+
+    provider = importlib.import_module(module_name)
+    seen = {}
+
+    monkeypatch.setenv("FAL_KEY", "fal-key")
+    monkeypatch.setattr(
+        provider,
+        "fal_submit",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("fal_submit should not be called when submission is provided")
+        ),
+    )
+
+    def fake_wait(model, request_id, api_key, **kwargs):
+        seen.update(model=model, request_id=request_id, kwargs=kwargs)
+        return {
+            "status": {"status": "COMPLETED"},
+            "response": {"video_url": "https://cdn.example/reused.mp4"},
+        }
+
+    monkeypatch.setattr(provider, "fal_wait_for_result", fake_wait)
+
+    result = getattr(provider, function_name)(
+        sync=True,
+        submission={
+            "request_id": "fal-reused-1",
+            "status_url": "https://queue.example/status/fal-reused-1",
+            "response_url": "https://queue.example/response/fal-reused-1",
+        },
+        **call_kwargs,
+    )
+
+    assert seen["request_id"] == "fal-reused-1"
+    assert seen["kwargs"]["status_url"] == "https://queue.example/status/fal-reused-1"
+    assert seen["kwargs"]["response_url"] == "https://queue.example/response/fal-reused-1"
+    assert result["request_id"] == "fal-reused-1"
+    assert result["video_url"] == "https://cdn.example/reused.mp4"
+
+
+@pytest.mark.parametrize(("module_name", "function_name", "call_kwargs"), FALAI_OPERATION_CASES)
 def test_falai_operation_sync_paths_use_returned_refs(
     monkeypatch,
     module_name,
@@ -371,6 +455,41 @@ def test_falai_operation_helpers_accept_explicit_urls_and_fallback(
     assert captured["status"][1].endswith("/fal-ai/generic/video/requests/req-1/status?logs=1")
     assert captured["result"][0] == "https://exact/result"
     assert captured["result"][1].endswith("/fal-ai/generic/video/requests/req-1/response")
+
+
+def test_public_video_dispatcher_does_not_swallow_on_submitted_exception(monkeypatch):
+    from easy_ai_clients import video
+    from easy_ai_clients.video._image_to_video._apis import falai as provider
+
+    expected = RuntimeError("stop waiting from callback")
+
+    monkeypatch.setenv("FAL_KEY", "fal-key")
+    monkeypatch.setattr(
+        provider,
+        "fal_submit",
+        lambda *args, **kwargs: {
+            "request_id": "fal-stop-1",
+            "status_url": "https://queue.example/status/fal-stop-1",
+            "response_url": "https://queue.example/response/fal-stop-1",
+        },
+    )
+    monkeypatch.setattr(
+        provider,
+        "fal_wait_for_result",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("poll should not run after callback failure")
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as raised:
+        video.image_to_video(
+            "Animate this.",
+            image="https://example.com/input.png",
+            api="falai",
+            on_submitted=lambda receipt: (_ for _ in ()).throw(expected),
+        )
+
+    assert raised.value is expected
 
 
 def test_runway_task_url_is_preserved_used_and_upload_secrets_redacted(monkeypatch):

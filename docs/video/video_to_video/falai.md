@@ -12,7 +12,7 @@ This adapter submits video-to-video and reference-video endpoints through the fa
 
 Required input: `video` / `video_path` / `video_url`.
 
-Accepted kwargs are provider-native and include common billing helpers such as `duration_seconds`, `billing_duration_seconds`, `compute_seconds`, `billing_compute_seconds`, `megapixels`, `billing_megapixels`, `num_videos`, and `number_of_videos`.
+Accepted kwargs are provider-native and include common billing helpers such as `duration_seconds`, `billing_duration_seconds`, `compute_seconds`, `billing_compute_seconds`, `megapixels`, `billing_megapixels`, `num_videos`, and `number_of_videos`, plus transport helpers `webhook_url`, `on_submitted`, and `submission`.
 
 ## Model Coverage
 
@@ -31,6 +31,8 @@ When fal.ai returns queue URLs, the adapter preserves them and uses them for
 `sync=True` polling. Pass `status_url` back to `video.get_status(...)` and
 `response_url` back to `video.get_result(...)` when present. Calls that only
 provide `request_id`, `model`, and `api` continue to reconstruct queue URLs.
+
+When `webhook_url` is provided, queue submission includes `?fal_webhook=<urlencoded value>`. `on_submitted` runs right after successful submit with the receipt dictionary, and `submission` skips submit and reuses a previous receipt for polling/result retrieval.
 
 ## Pricing
 

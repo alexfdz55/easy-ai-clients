@@ -20,6 +20,7 @@ from typing import Any
 
 import requests
 
+from ...._submission_hooks import run_on_submitted
 from .._apis._shared import (
     normalize_language_code,
     reject_unknown_kwargs,
@@ -58,6 +59,9 @@ DOCUMENTED_KWARGS = {
     "apply_text_normalization",
     "output_format",
     "timeout_seconds",
+    "webhook_url",
+    "on_submitted",
+    "submission",
 }
 _POLL_INTERVAL_SECONDS = 0.7
 
@@ -73,6 +77,9 @@ def generate(
     options = reject_unknown_kwargs("fal.ai", model, kwargs, DOCUMENTED_KWARGS)
     output_format = str(options.pop("output_format", "mp3_44100_128")).strip()
     timeout_seconds = float(options.pop("timeout_seconds", 180))
+    webhook_url = options.pop("webhook_url", None)
+    on_submitted = options.pop("on_submitted", None)
+    submission = options.pop("submission", None)
     model_config = DOCUMENTED_MODEL_METADATA.get(model, _UNKNOWN_MODEL_METADATA)
     documented_model = model in DOCUMENTED_MODEL_METADATA
 
@@ -87,6 +94,8 @@ def generate(
     text_chunks = chunk_text_for_provider(
         text, compute_operational_char_limit(model_config["char_limit"])
     )
+    if submission is not None and len(text_chunks) != 1:
+        raise ValueError("submission can only be used when synthesis produces exactly one chunk.")
 
     chunk_records: list[dict[str, Any]] = []
     request_ids: list[str] = []
@@ -109,6 +118,9 @@ def generate(
             chunk_index=chunk_index,
             output_format=output_format,
             timeout_seconds=timeout_seconds,
+            webhook_url=webhook_url,
+            on_submitted=on_submitted,
+            submission=submission if chunk_index == 0 else None,
         )
         chunk_records.append(record)
         if request_id:
@@ -156,17 +168,31 @@ def _generate_chunk(
     chunk_index: int,
     output_format: str,
     timeout_seconds: float,
+    webhook_url: str | None,
+    on_submitted,
+    submission: Mapping[str, Any] | None,
 ) -> tuple[dict[str, Any], str, float | None]:
     """Submit one chunk to the queue, wait for it and return (record, request id, units)."""
     headers = {"Authorization": f"Key {api_key}"}
-    submit_response = request_with_retries(
-        "POST",
-        f"{QUEUE_URL}/{model}",
-        headers={**headers, "Content-Type": "application/json"},
-        json_body=payload,
-        timeout=(15.0, float(timeout_seconds)),
-    )
-    submit_payload = response_json(submit_response)
+    if submission is not None:
+        if not isinstance(submission, Mapping):
+            raise TypeError("submission must be a dictionary when provided.")
+        submit_payload = dict(submission)
+    else:
+        request_params = {}
+        webhook = str(webhook_url or "").strip()
+        if webhook:
+            request_params["fal_webhook"] = webhook
+        submit_response = request_with_retries(
+            "POST",
+            f"{QUEUE_URL}/{model}",
+            headers={**headers, "Content-Type": "application/json"},
+            params=request_params or None,
+            json_body=payload,
+            timeout=(15.0, float(timeout_seconds)),
+        )
+        submit_payload = response_json(submit_response)
+        run_on_submitted(on_submitted, submit_payload)
     request_id = str(submit_payload.get("request_id") or "").strip()
     status_url = str(submit_payload.get("status_url") or "").strip()
     response_url = str(submit_payload.get("response_url") or "").strip()

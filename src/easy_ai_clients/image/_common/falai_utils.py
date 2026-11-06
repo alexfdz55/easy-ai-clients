@@ -12,9 +12,11 @@ tratamento de erros.
 from __future__ import annotations
 
 import time
+import urllib.parse
 
 from ..._error_utils import request_id_of
 from ..._falai_pricing import fal_estimate_unit_price
+from ..._submission_hooks import is_on_submitted_exception, run_on_submitted
 from .http_utils import request
 from .image_utils import image_to_data_url
 from .provider_utils import (
@@ -58,7 +60,7 @@ def _auth_headers(api_key):
     return {"Authorization": f"Key {api_key}"}
 
 
-def _submit_queue(*, model, body, api_key, timeout_seconds):
+def _submit_queue(*, model, body, api_key, timeout_seconds, webhook_url=None):
     """Submete a requisição inicial para a fila da fal.ai.
 
     ### Parâmetros:
@@ -71,9 +73,17 @@ def _submit_queue(*, model, body, api_key, timeout_seconds):
         Tupla ``(response, payload)`` com a resposta HTTP e o JSON parseado.
     """
 
+    queue_url = f"{_FAL_QUEUE_BASE}/{model}"
+    webhook = str(webhook_url or "").strip()
+    if webhook:
+        queue_url = (
+            f"{queue_url}?"
+            f"{urllib.parse.urlencode({'fal_webhook': webhook})}"
+        )
+
     response = request(
         "POST",
-        f"{_FAL_QUEUE_BASE}/{model}",
+        queue_url,
         headers={**_auth_headers(api_key), "Content-Type": "application/json"},
         json=body,
         timeout_seconds=timeout_seconds,
@@ -233,6 +243,9 @@ def _run_image_job(
     operation,
     preprocess_warnings="",
     cost_metadata=None,
+    webhook_url=None,
+    on_submitted=None,
+    submission=None,
 ):
     """Executa o ciclo completo submit → poll → download para operações de imagem."""
 
@@ -241,13 +254,26 @@ def _run_image_job(
     submit_request_id = ""
     request_id = ""
     try:
-        submit_response, submit_payload = _submit_queue(
-            model=model,
-            body=body,
-            api_key=api_key,
-            timeout_seconds=timeout_seconds,
-        )
+        submit_response = None
+        if submission is not None:
+            if not isinstance(submission, dict):
+                raise TypeError("submission must be a dictionary when provided.")
+            submit_payload = dict(submission)
+        else:
+            submit_options = {}
+            if webhook_url is not None:
+                submit_options["webhook_url"] = webhook_url
+            submit_response, submit_payload = _submit_queue(
+                model=model,
+                body=body,
+                api_key=api_key,
+                timeout_seconds=timeout_seconds,
+                **submit_options,
+            )
+            run_on_submitted(on_submitted, submit_payload)
         submit_request_id = extract_request_id(submit_response, submit_payload)
+        if not submit_request_id:
+            submit_request_id = extract_request_id(payload=submit_payload)
 
         polled = _poll_completion(
             submission=submit_payload,
@@ -304,6 +330,8 @@ def _run_image_job(
             **_cost_result_kwargs(cost_metadata),
         )
     except Exception as exc:
+        if is_on_submitted_exception(exc):
+            raise
         return build_result(
             warnings=join_warnings(preprocess_warnings, provider_error_to_warning(exc)),
             request_id=request_id or submit_request_id or request_id_of(exc),
@@ -321,6 +349,9 @@ def generate_image(
     seed=None,
     extra_body=None,
     cost_metadata=None,
+    webhook_url=None,
+    on_submitted=None,
+    submission=None,
 ):
     """Executa a geração text-to-image em um modelo da fal.ai.
 
@@ -350,6 +381,9 @@ def generate_image(
         build_result=build_result,
         operation="generate",
         cost_metadata=cost_metadata,
+        webhook_url=webhook_url,
+        on_submitted=on_submitted,
+        submission=submission,
     )
 
 
@@ -383,6 +417,9 @@ def edit_image(
     seed=None,
     extra_body=None,
     cost_metadata=None,
+    webhook_url=None,
+    on_submitted=None,
+    submission=None,
 ):
     """Executa a edição image+prompt em um modelo da fal.ai.
 
@@ -423,6 +460,9 @@ def edit_image(
         operation="edit",
         preprocess_warnings=warnings,
         cost_metadata=cost_metadata,
+        webhook_url=webhook_url,
+        on_submitted=on_submitted,
+        submission=submission,
     )
 
 
@@ -437,6 +477,9 @@ def remix_image(
     seed=None,
     extra_body=None,
     cost_metadata=None,
+    webhook_url=None,
+    on_submitted=None,
+    submission=None,
 ):
     """Executa a geração guiada por referências na fal.ai.
 
@@ -479,6 +522,9 @@ def remix_image(
         build_result=build_result,
         operation="remix",
         cost_metadata=cost_metadata,
+        webhook_url=webhook_url,
+        on_submitted=on_submitted,
+        submission=submission,
     )
 
 

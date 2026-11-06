@@ -12,6 +12,8 @@ This adapter covers fal.ai image/audio-to-video and avatar/talking-video endpoin
 
 Inputs: `image` / `image_path` / `image_url`, `audio` / `audio_path` / `audio_url`, or provider-native text/TTS kwargs when the selected fal.ai endpoint supports them.
 
+Transport helpers: `webhook_url` appends `?fal_webhook=<urlencoded value>` to queue submission, `on_submitted` runs right after successful submit with the receipt dictionary, and `submission` skips submit and reuses a previous receipt for polling/result retrieval.
+
 ## Model Coverage
 
 | Model | Status | Pricing basis |

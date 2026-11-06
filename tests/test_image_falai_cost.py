@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import urllib.parse
+
 import pytest
 
 _ONE_PIXEL_PNG_DATA_URL = (
@@ -291,3 +293,134 @@ def test_billable_units_fall_back_to_the_estimate_when_pricing_fails(monkeypatch
     assert "billable_units_pricing_error" in out["cost_details"]
     # Sin header no cambia nada.
     assert falai_utils.billable_units_cost(model="m", headers={}, api_key="k", timeout_seconds=5, cost_metadata=estimate) is estimate
+
+
+def test_falai_submit_queue_appends_fal_webhook_query(monkeypatch):
+    from easy_ai_clients.image._common import falai_utils
+
+    captured = {}
+
+    class FakeResponse:
+        def json(self):
+            return {
+                "request_id": "req-hook-1",
+                "status_url": "https://queue.fal.run/status",
+                "response_url": "https://queue.fal.run/response",
+            }
+
+    def fake_request(method, url, headers=None, json=None, timeout_seconds=None):
+        captured.update(
+            method=method,
+            url=url,
+            headers=headers,
+            json=json,
+            timeout_seconds=timeout_seconds,
+        )
+        return FakeResponse()
+
+    monkeypatch.setattr(falai_utils, "request", fake_request)
+
+    _, payload = falai_utils._submit_queue(  # noqa: SLF001
+        model="fal-ai/flux/schnell",
+        body={"prompt": "A clean icon."},
+        api_key="fal-key",
+        timeout_seconds=9,
+        webhook_url="https://example.com/hook?token=a b",
+    )
+
+    parsed = urllib.parse.urlsplit(captured["url"])
+    query = urllib.parse.parse_qs(parsed.query)
+    assert captured["method"] == "POST"
+    assert parsed.path.endswith("/fal-ai/flux/schnell")
+    assert query["fal_webhook"] == ["https://example.com/hook?token=a b"]
+    assert payload["request_id"] == "req-hook-1"
+
+
+def test_falai_image_on_submitted_exception_is_not_swallowed(monkeypatch):
+    from easy_ai_clients import image
+    from easy_ai_clients.image._common import falai_utils
+    from easy_ai_clients.image._generate._apis import falai as provider
+
+    class FakeResponse:
+        headers = {}
+
+    monkeypatch.setattr(provider, "get_provider_api_key", lambda *args: "fal-key")
+    monkeypatch.setattr(
+        provider,
+        "fal_image_pricing_estimate",
+        lambda *args: {"cost_usd": 0.0, "cost_is_estimated": True, "cost_source": "unavailable"},
+    )
+    monkeypatch.setattr(
+        falai_utils,
+        "_submit_queue",  # noqa: SLF001
+        lambda **kwargs: (
+            FakeResponse(),
+            {
+                "request_id": "req-callback-1",
+                "status_url": "https://queue.fal.run/status",
+                "response_url": "https://queue.fal.run/response",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        falai_utils,
+        "_poll_completion",  # noqa: SLF001
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("poll should not run after callback failure")),
+    )
+
+    receipts = []
+    expected = RuntimeError("stop waiting from callback")
+
+    def on_submitted(receipt):
+        receipts.append(receipt)
+        raise expected
+
+    with pytest.raises(RuntimeError) as raised:
+        image.generate("A clean icon.", api="falai", on_submitted=on_submitted)
+
+    assert raised.value is expected
+    assert receipts and receipts[0]["request_id"] == "req-callback-1"
+
+
+def test_falai_image_submission_skips_submit_post(monkeypatch):
+    from easy_ai_clients.image._common import falai_utils
+    from easy_ai_clients.image._generate._apis import falai as provider
+
+    captured = {}
+
+    monkeypatch.setattr(provider, "get_provider_api_key", lambda *args: "fal-key")
+    monkeypatch.setattr(
+        provider,
+        "fal_image_pricing_estimate",
+        lambda *args: {"cost_usd": 0.0, "cost_is_estimated": True, "cost_source": "unavailable"},
+    )
+    monkeypatch.setattr(
+        falai_utils,
+        "_submit_queue",  # noqa: SLF001
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("submit must be skipped when submission is provided")),
+    )
+
+    def fake_poll_completion(**kwargs):
+        captured["submission"] = kwargs["submission"]
+        return (
+            {"request_id": "req-reused-1", "images": [{"url": "https://example.com/image.png"}]},
+            {"status": "COMPLETED"},
+            "",
+            {},
+        )
+
+    monkeypatch.setattr(falai_utils, "_poll_completion", fake_poll_completion)  # noqa: SLF001
+    monkeypatch.setattr(falai_utils, "download_image_as_base64_png", lambda *a, **k: "BASE64_IMAGE")
+
+    result = provider.generate(
+        "A clean icon.",
+        submission={
+            "request_id": "req-reused-1",
+            "status_url": "https://queue.fal.run/status",
+            "response_url": "https://queue.fal.run/response",
+        },
+    )
+
+    assert captured["submission"]["request_id"] == "req-reused-1"
+    assert result["request_id"] == "req-reused-1"
+    assert result["base64"] == "BASE64_IMAGE"

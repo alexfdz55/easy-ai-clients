@@ -32,6 +32,9 @@ The adapter exposes `transcribe(audio_input, model="fal-ai/elevenlabs/speech-to-
 | `num_speakers` | `num_speakers` | int | omitted | provider-native | Optional speaker hint. | No |
 | `language_mkd` | n/a | string or `False` | `"en"` | supported Markdown languages | Controls optional `mkd`. | No |
 | `timeout_seconds` | n/a | float | `300` | positive seconds | Queue submit timeout. | No |
+| `webhook_url` | n/a | string | omitted | valid URL | Adds `?fal_webhook=<urlencoded value>` to queue submission. | No |
+| `on_submitted` | n/a | callable | omitted | callable | Called right after successful submit with the receipt dict; raised exceptions are re-raised. | No |
+| `submission` | n/a | dict | omitted | fal receipt payload | Skip submit and go straight to polling/result retrieval. | No |
 
 Unknown kwargs raise `TypeError`.
 

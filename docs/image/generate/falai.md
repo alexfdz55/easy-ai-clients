@@ -45,7 +45,7 @@ The wrapper sends the smallest valid request shape by default: one output image 
 
 Supported public keyword parameters are provider-native whenever practical. Unsupported keyword arguments return a normalized warning or analyze output instead of being silently ignored.
 
-timeout_seconds, output_format, seed, vision_endpoint, num_images, image_size, guidance_scale, num_inference_steps, enable_safety_checker, sync_mode, billing_unit_quantity, unit_quantity, and fal_payload for model-specific schema fields.
+timeout_seconds, output_format, seed, vision_endpoint, num_images, image_size, guidance_scale, num_inference_steps, enable_safety_checker, sync_mode, billing_unit_quantity, unit_quantity, webhook_url, on_submitted, submission, and fal_payload for model-specific schema fields.
 
 Operational keyword parameters:
 
@@ -57,6 +57,9 @@ Operational keyword parameters:
   and are not forwarded to the model payload. When neither value is supplied,
   image generation estimates one image by default, or `num_images` when it is
   provided.
+- `webhook_url`: when provided, submission uses `?fal_webhook=<urlencoded value>` on the queue endpoint.
+- `on_submitted`: optional callback called right after a successful queue submission with the receipt dictionary (`request_id`, `status_url`, `response_url`, ...). Exceptions raised by this callback are re-raised.
+- `submission`: optional receipt dictionary from an earlier queue submission. When provided, the wrapper skips `POST` submit and goes straight to polling/result retrieval.
 
 ## Model Coverage
 

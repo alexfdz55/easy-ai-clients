@@ -8,6 +8,7 @@ from ..._shared import (
     fal_async_refs,
     fal_get_result,
     fal_get_status,
+    fal_submission_receipt,
     fal_submit,
     fal_wait_for_result,
     merge_async_refs,
@@ -82,7 +83,16 @@ DOCUMENTED_MODEL_OPTIONS = {
     model: set(COMMON_FAL_VIDEO_OPTIONS) for model in DOCUMENTED_MODEL_PRICING
 }
 
-COMMON_OPTIONS = {"model", "timeout_seconds", "poll_interval_seconds", "extra_payload", *FAL_ESTIMATE_OPTIONS}
+COMMON_OPTIONS = {
+    "model",
+    "timeout_seconds",
+    "poll_interval_seconds",
+    "extra_payload",
+    "webhook_url",
+    "on_submitted",
+    "submission",
+    *FAL_ESTIMATE_OPTIONS,
+}
 
 
 def _selected_model(kwargs):
@@ -187,7 +197,16 @@ def generate_text_to_video(prompt, output_path=None, sync=True, **kwargs):
     payload = _build_payload(model, prepared, kwargs)
     cost = _cost(model, kwargs)
     api_key = require_env(ENV_NAME, "fal.ai")
-    submission = fal_submit(model, payload, api_key, timeout_seconds=kwargs.get("timeout_seconds"))
+    submission = fal_submission_receipt(
+        model,
+        payload,
+        api_key,
+        timeout_seconds=kwargs.get("timeout_seconds"),
+        webhook_url=kwargs.get("webhook_url"),
+        on_submitted=kwargs.get("on_submitted"),
+        submission=kwargs.get("submission"),
+        submit_fn=fal_submit,
+    )
     request_id = _request_id(submission)
     async_refs = fal_async_refs(submission, model, request_id)
 

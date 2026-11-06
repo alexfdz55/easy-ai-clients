@@ -14,6 +14,7 @@ import importlib
 from typing import Any
 
 from .._error_utils import attach_error, error_message
+from .._submission_hooks import is_on_submitted_exception
 
 __all__ = [
     "generate",
@@ -158,6 +159,8 @@ def analyze(prompt, image, model=None, *, api, **kwargs):
             result = module.analyze(prompt, image, model=model, **kwargs)
         return _attach_analyze_output_error(result, api, "analyze", model)
     except Exception as exc:
+        if is_on_submitted_exception(exc):
+            raise
         message = error_message(exc)
         return attach_error(
             {
@@ -179,6 +182,8 @@ def analyze(prompt, image, model=None, *, api, **kwargs):
 
 
 def _image_failure(exc, *, api, operation, model):
+    if is_on_submitted_exception(exc):
+        raise exc
     message = error_message(exc)
     return attach_error(
         {

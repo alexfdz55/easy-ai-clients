@@ -19,6 +19,8 @@ from pathlib import Path
 
 import requests
 
+from ..._submission_hooks import run_on_submitted
+
 FAL_QUEUE_BASE_URL = "https://queue.fal.run"
 FAL_API_BASE_URL = "https://api.fal.ai/v1"
 RUNWAY_BASE_URL = "https://api.dev.runwayml.com"
@@ -435,14 +437,43 @@ def fal_headers(api_key):
     return {"Authorization": "Key " + api_key, "Content-Type": "application/json"}
 
 
-def fal_submit(model, payload, api_key, timeout_seconds=None):
+def fal_submit(model, payload, api_key, timeout_seconds=None, webhook_url=None):
+    url = FAL_QUEUE_BASE_URL + "/" + model
+    webhook = str(webhook_url or "").strip()
+    if webhook:
+        url = url + "?" + urllib.parse.urlencode({"fal_webhook": webhook})
     return http_json(
         "POST",
-        FAL_QUEUE_BASE_URL + "/" + model,
+        url,
         headers=fal_headers(api_key),
         payload=payload,
         timeout_seconds=timeout_seconds,
     )
+
+
+def fal_submission_receipt(
+    model,
+    payload,
+    api_key,
+    *,
+    timeout_seconds=None,
+    webhook_url=None,
+    on_submitted=None,
+    submission=None,
+    submit_fn=None,
+):
+    if submission is not None:
+        if not isinstance(submission, Mapping):
+            raise TypeError("submission must be a dictionary when provided.")
+        return dict(submission)
+    submit_callable = submit_fn or fal_submit
+    submit_kwargs = {"timeout_seconds": timeout_seconds}
+    webhook = str(webhook_url or "").strip()
+    if webhook:
+        submit_kwargs["webhook_url"] = webhook
+    submitted = submit_callable(model, payload, api_key, **submit_kwargs)
+    run_on_submitted(on_submitted, submitted)
+    return submitted
 
 
 def fal_estimate_unit_price(model, unit_quantity, api_key, timeout_seconds=None):

@@ -32,6 +32,9 @@ the same model and the same voice id can be asked through fal.
 | `output_format` | Same enum as ElevenLabs, default `mp3_44100_128`. |
 | `stability`, `similarity_boost`, `seed`, `apply_text_normalization` | Forwarded as given. |
 | `timeout_seconds` | Per chunk, default 180. |
+| `webhook_url` | Optional queue webhook URL. When provided, submission uses `?fal_webhook=<urlencoded value>`. |
+| `on_submitted` | Optional callback called right after each successful chunk submission with the fal receipt dictionary. Exceptions raised by this callback are re-raised. |
+| `submission` | Optional receipt dictionary. When provided, submit is skipped and the adapter goes directly to polling/result retrieval for that chunk (single-chunk requests only). |
 
 Other keyword arguments are forwarded to the payload untouched.
 

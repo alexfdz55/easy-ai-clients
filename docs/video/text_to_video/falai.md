@@ -47,7 +47,7 @@ Normalized parameters:
 | `output_path` | no | Downloads the completed video when `sync=True`. |
 | `sync` | no | `True` submits and polls; `False` returns queue identifiers. |
 
-Accepted `kwargs` for the implemented default: `model`, `num_frames`, `frames_per_second`, `seed`, `resolution`, `aspect_ratio`, `num_inference_steps`, `enable_safety_checker`, `enable_output_safety_checker`, `enable_prompt_expansion`, `guidance_scale`, `shift`, `interpolator_model`, `num_interpolated_frames`, `adjust_fps_for_interpolation`, `video_quality`, `video_write_mode`, `timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+Accepted `kwargs` for the implemented default: `model`, `num_frames`, `frames_per_second`, `seed`, `resolution`, `aspect_ratio`, `num_inference_steps`, `enable_safety_checker`, `enable_output_safety_checker`, `enable_prompt_expansion`, `guidance_scale`, `shift`, `interpolator_model`, `num_interpolated_frames`, `adjust_fps_for_interpolation`, `video_quality`, `video_write_mode`, `timeout_seconds`, `poll_interval_seconds`, `extra_payload`, `webhook_url`, `on_submitted`, and `submission`.
 
 Validated values include `resolution` `580p` or `720p`, `aspect_ratio` `16:9`, `9:16`, or `1:1`, `num_frames` 17 to 161, `frames_per_second` 4 to 60, `seed` 0 to 4294967295, `num_inference_steps` 2 to 50, `guidance_scale` 1 to 10, `shift` 1 to 10, `interpolator_model` `none`, `film`, or `rife`, `num_interpolated_frames` 0 to 4, `video_quality` `low`, `medium`, `high`, or `maximum`, and `video_write_mode` `fast`, `balanced`, or `small`.
 
@@ -84,6 +84,8 @@ the caller supplies an explicit billing quantity such as `duration_seconds`,
 ## Domain Notes
 
 fal.ai uses queue submission, status polling, and response retrieval. `sync=False` returns `request_id`, `status_url`, and `response_url`. Use `video.get_status`, `video.get_result`, and `video.download` with operation `text_to_video` for async follow-up work.
+
+When `webhook_url` is provided, queue submission includes `?fal_webhook=<urlencoded value>`. `on_submitted` receives the submission receipt right after a successful submit and raised exceptions are re-raised. `submission` skips submit and reuses a previously returned receipt for polling and result retrieval.
 
 When fal.ai returns queue URLs, the adapter preserves them and uses them for
 `sync=True` polling. Pass `status_url` back to `video.get_status(...)` and

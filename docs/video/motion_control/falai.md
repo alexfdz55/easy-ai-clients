@@ -40,7 +40,7 @@ def motion_control(prompt=None, image=None, video=None, reference=None, model=No
 
 Required normalized inputs for the implemented model: `image_path` or `image_url` for the character image, `video_path` or `video_url` for the motion reference, `character_orientation`, and `duration_seconds` or `billing_duration_seconds` for cost estimation.
 
-Accepted `kwargs`: `model`, `character_orientation`, `keep_original_sound`, `duration_seconds`, `billing_duration_seconds`, `timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+Accepted `kwargs`: `model`, `character_orientation`, `keep_original_sound`, `duration_seconds`, `billing_duration_seconds`, `timeout_seconds`, `poll_interval_seconds`, `extra_payload`, `webhook_url`, `on_submitted`, and `submission`.
 
 Validated values: `character_orientation` must be `image` or `video`. `duration_seconds` must be greater than zero.
 
@@ -73,6 +73,8 @@ Cost is estimated only when the documented billing unit can be calculated.
 ## Domain Notes
 
 The wrapper uses `video_path` or `video_url` as the motion reference for this fal.ai model. `reference_path` and `reference_url` are rejected for this provider to avoid ambiguous mapping.
+
+When `webhook_url` is provided, queue submission includes `?fal_webhook=<urlencoded value>`. `on_submitted` runs right after successful submit with the receipt dictionary, and `submission` skips submit and reuses a previous receipt for polling/result retrieval.
 
 When fal.ai returns queue URLs, the adapter preserves them and uses them for
 `sync=True` polling. Pass `status_url` back to `video.get_status(...)` and

@@ -40,7 +40,7 @@ def video_lipsync(video=None, audio=None, text=None, model=None, *, api, **kwarg
 
 Required normalized inputs: `video_path` or `video_url`, and `audio_path` or `audio_url`. `text` is rejected because this wrapper does not expose text-to-speech for the selected model.
 
-Accepted `kwargs`: `model`, `prompt`, `num_frames`, `resolution`, `seed`, `acceleration`, `duration_seconds`, `billing_duration_seconds`, `timeout_seconds`, `poll_interval_seconds`, and `extra_payload`.
+Accepted `kwargs`: `model`, `prompt`, `num_frames`, `resolution`, `seed`, `acceleration`, `duration_seconds`, `billing_duration_seconds`, `timeout_seconds`, `poll_interval_seconds`, `extra_payload`, `webhook_url`, `on_submitted`, and `submission`.
 
 Validated values: `resolution` `480p` or `720p`, `num_frames` 41 to 241, `seed` 0 to 4294967295, and `acceleration` `none`, `regular`, or `high`.
 
@@ -55,6 +55,8 @@ The fal.ai page currently contains contradictory generated prose for `num_frames
 ## Domain Notes
 
 `duration_seconds` or `billing_duration_seconds` can be supplied for cost precision. If omitted, the wrapper estimates duration from `num_frames / 25` and otherwise follows the provider default when `num_frames` is not provided. Queue helper functions are available.
+
+When `webhook_url` is provided, queue submission includes `?fal_webhook=<urlencoded value>`. `on_submitted` runs right after successful submit with the receipt dictionary, and `submission` skips submit and reuses a previous receipt for polling/result retrieval.
 
 When fal.ai returns queue URLs, the adapter preserves them and uses them for
 `sync=True` polling. Pass `status_url` back to `video.get_status(...)` and

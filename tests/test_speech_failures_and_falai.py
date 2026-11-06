@@ -384,3 +384,144 @@ def test_fal_speech_falls_back_to_the_documented_price_without_billed_units(monk
     # 11 caracteres a 40 USD por millón
     assert result["cost_usd"] == pytest.approx(0.00044)
     assert result["cost_source"] == "official_pricing_table"
+
+
+def test_fal_transcribe_forwards_webhook_and_calls_on_submitted(monkeypatch):
+    from easy_ai_clients import audio
+    from easy_ai_clients.audio._transcribe._apis import falai
+
+    captured = {}
+    receipts = []
+
+    prepared_audio = audio.PreparedTranscriptionAudio(
+        audio=None,
+        file_name="audio.mp3",
+        audio_bytes=b"audio",
+        content_type="audio/mpeg",
+        audio_duration_seconds=1.0,
+        upload_format="mp3",
+        normalized=True,
+        source_format="mp3",
+    )
+    monkeypatch.setattr(falai, "get_required_api_key", lambda env_var: "fal-key")
+
+    def fake_request(method, url, **kwargs):
+        if method == "POST":
+            captured["params"] = kwargs.get("params")
+            return _FakeResponse(
+                {
+                    "request_id": "fal-transcribe-1",
+                    "status_url": "https://queue.fal.run/status/transcribe-1",
+                    "response_url": "https://queue.fal.run/response/transcribe-1",
+                }
+            )
+        if url.endswith("/status/transcribe-1"):
+            return _FakeResponse({"status": "COMPLETED"})
+        if url.endswith("/response/transcribe-1"):
+            return _FakeResponse(
+                {"text": "hola", "words": [], "language_code": "es"},
+                headers={"X-Fal-Billable-Units": "1"},
+            )
+        return _FakeResponse({"prices": [{"unit_price": 0.01, "unit": "minutes"}]})
+
+    monkeypatch.setattr(falai, "request_with_retries", fake_request)
+
+    result = audio.transcribe(
+        prepared_audio,
+        api="falai",
+        webhook_url="https://notice.example/fal",
+        on_submitted=receipts.append,
+        language_mkd=False,
+    )
+
+    assert result["text"] == "hola"
+    assert captured["params"]["fal_webhook"] == "https://notice.example/fal"
+    assert receipts and receipts[0]["request_id"] == "fal-transcribe-1"
+
+
+def test_fal_transcribe_submission_skips_submit_post(monkeypatch):
+    from easy_ai_clients.audio._transcribe._apis import falai
+
+    calls = []
+
+    monkeypatch.setattr(
+        falai,
+        "build_request_audio",
+        lambda _: {
+            "file_name": "audio.mp3",
+            "audio_bytes": b"audio",
+            "content_type": "audio/mpeg",
+            "audio_duration_seconds": 1.0,
+            "upload_format": "mp3",
+            "normalized": True,
+        },
+    )
+    monkeypatch.setattr(falai, "get_required_api_key", lambda env_var: "fal-key")
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url))
+        if method == "POST" and url.startswith("https://queue.fal.run/"):
+            raise AssertionError("submit POST must not run when submission is provided")
+        if url.endswith("/status/reused-1"):
+            return _FakeResponse({"status": "COMPLETED"})
+        if url.endswith("/response/reused-1"):
+            return _FakeResponse(
+                {"text": "hola", "words": [], "language_code": "es"},
+                headers={"X-Fal-Billable-Units": "1"},
+            )
+        return _FakeResponse({"prices": [{"unit_price": 0.01, "unit": "minutes"}]})
+
+    monkeypatch.setattr(falai, "request_with_retries", fake_request)
+
+    result = falai.transcribe(
+        "audio.mp3",
+        language_mkd=False,
+        submission={
+            "request_id": "fal-reused-1",
+            "status_url": "https://queue.fal.run/status/reused-1",
+            "response_url": "https://queue.fal.run/response/reused-1",
+        },
+    )
+
+    assert result["text"] == "hola"
+    assert ("GET", "https://queue.fal.run/status/reused-1") in calls
+    assert ("GET", "https://queue.fal.run/response/reused-1") in calls
+
+
+def test_public_audio_dispatcher_does_not_swallow_fal_on_submitted_exception(monkeypatch):
+    from easy_ai_clients import audio
+    from easy_ai_clients.audio._synthesize._apis import falai
+
+    expected = RuntimeError("stop waiting from callback")
+    calls = []
+
+    monkeypatch.setenv("FAL_KEY", "fal-test-key")
+    monkeypatch.setattr(falai, "_download_bytes", lambda *args, **kwargs: b"mp3")
+    monkeypatch.setattr(
+        falai,
+        "_finalize_synthesis_output",
+        lambda records, cost_usd: {"cost_usd": cost_usd, "audio": object(), "words": {}, "cost_details": {}},
+    )
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url))
+        if method == "POST":
+            return _FakeResponse(
+                {
+                    "request_id": "fal-stop-1",
+                    "status_url": "https://queue.fal.run/status/stop-1",
+                    "response_url": "https://queue.fal.run/response/stop-1",
+                }
+            )
+        raise AssertionError("polling should not run after callback failure")
+
+    monkeypatch.setattr(falai, "request_with_retries", fake_request)
+
+    def on_submitted(_receipt):
+        raise expected
+
+    with pytest.raises(RuntimeError) as raised:
+        audio.generate("Hola mundo.", api="falai", voice="v1", on_submitted=on_submitted)
+
+    assert raised.value is expected
+    assert calls == [("POST", "https://queue.fal.run/elevenlabs/tts/eleven-v4-turbo")]
