@@ -3,6 +3,18 @@
 All notable changes to **easy-ai-clients** are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.22.0 - 2026-11-06
+
+### Added
+
+- fal.ai queue flows now accept three optional webhook-oriented controls across:
+  - `image.generate`, `image.edit`, and `image.remix` (`api="falai"`),
+  - all `video.*` fal.ai wrappers,
+  - fal.ai audio synth/transcribe adapters.
+- `webhook_url`: appends `?fal_webhook=<urlencoded value>` to fal queue submission.
+- `on_submitted`: receives the queue receipt immediately after a successful submit; callback-raised exceptions are re-raised for caller-controlled early exit paths.
+- `submission`: skips submit and reuses a previously returned receipt to continue through polling/result retrieval.
+
 ## 0.21.5 - 2026-10-27
 
 ### Fixed
